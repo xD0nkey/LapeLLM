@@ -81,3 +81,18 @@ begin
     Print(response);
   end;
 end.
+```
+[Explain how to run this script, e.g., LapeLLMHost --script scripts/simple_prompt.lape]
+
+For detailed usage, configuration, scripting API, and more examples, see the Usage Guide.
+
+### 📖 Documentation
+* Usage Guide: Detailed instructions, configuration (API keys!), lape scripting for LLMs, and the Host API reference.
+* Contributing Guide: How to contribute to LapeLLM.
+* Changelog: History of changes to the project.
+
+### 🤝 Contributing
+Contributions are welcome! Help improve the core library, add support for more LLMs, write example scripts, or enhance documentation.
+
+### 📧 Contact
+For issues or questions, please use the GitHub Issues page.
