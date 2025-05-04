@@ -4,8 +4,6 @@ Below is a full tutorial explaining the core features, structures, and syntax of
 
   Simba Language Full Tutorial
 pascal
-Kopiera
-Redigera
 program MyFirstScript;
 
 {$DEFINE SMART} // enables SMART (a client for automation)
@@ -32,8 +30,6 @@ A procedure is a subroutine that doesn't return a value.
 A function is a subroutine that returns a value.
 
 pascal
-Kopiera
-Redigera
 function AddTwoNumbers(a, b: Integer): Integer;
 begin
   Result := a + b;
@@ -42,16 +38,12 @@ Variables
 Declared with var keyword:
 
 pascal
-Kopiera
-Redigera
 var
   x, y: Integer;
 Control Structures
 if, then, else
 
 pascal
-Kopiera
-Redigera
 if x > 10 then
   WriteLn('x is greater than 10')
 else
@@ -59,25 +51,20 @@ else
 while, repeat, for
 
 pascal
-Kopiera
-Redigera
 while not IsKeyDown(VK_ESCAPE) do
   Wait(100);
+
 pascal
-Kopiera
-Redigera
 repeat
   Wait(100);
 until IsKeyDown(VK_ESCAPE);
+
 pascal
-Kopiera
-Redigera
 for i := 0 to 10 do
   WriteLn(IntToStr(i));
 Arrays and Loops
+
 pascal
-Kopiera
-Redigera
 var
   arr: TIntegerArray;
   i: Integer;
@@ -99,8 +86,6 @@ SMART
 SMART is an injected RuneScape client used for botting. Use {$DEFINE SMART} to enable it. Many scripts start by initializing SMART and logging in:
 
 pascal
-Kopiera
-Redigera
 begin
   SetupSRL();
   LoginPlayerToLob();
@@ -109,8 +94,6 @@ Color Functions
 Color matching is essential for Simba. Examples:
 
 pascal
-Kopiera
-Redigera
 function FindColor(var x, y: Integer; color: Integer; xs, ys, xe, ye: Integer): Boolean;
 Color values are integers (e.g., 65536 = red). You can also use:
 
@@ -121,15 +104,11 @@ GetColor(x, y) — gets the pixel color at x, y
 Tolerance is used to generalize a color:
 
 pascal
-Kopiera
-Redigera
 FindColorTolerance(x, y, 65536, 0, 0, 800, 600, 15);
 Coordinates and Boxes
 Regions are defined using coordinates:
 
 pascal
-Kopiera
-Redigera
 x1 := 0;
 y1 := 0;
 x2 := 800;
@@ -137,13 +116,9 @@ y2 := 600;
 To define a box:
 
 pascal
-Kopiera
-Redigera
 Box := IntToBox(100, 100, 200, 200);
 Working with Bitmaps
 pascal
-Kopiera
-Redigera
 var
   bmp: Integer;
 begin
@@ -161,8 +136,6 @@ Safety
 Always ensure to add failsafes:
 
 pascal
-Kopiera
-Redigera
 if not FindColor(x, y, color, 0, 0, 800, 600) then
 begin
   WriteLn('Color not found, exiting.');
@@ -172,8 +145,6 @@ Waits and Randomization
 To simulate human behavior:
 
 pascal
-Kopiera
-Redigera
 WaitRange(1000, 3000); // waits between 1 and 3 seconds
 
 Important Concepts for the LLM
