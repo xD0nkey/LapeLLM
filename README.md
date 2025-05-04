@@ -1,6 +1,5 @@
 # LapeLLM
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/xD0nkey/LapeLLM/blob/main/LICENSE)
 LapeLLM integrates Large Language Models (LLMs) into [Free Pascal / Delphi] applications, leveraging the **lape** scripting engine for flexible prompt engineering, interaction control, and response handling. Define your LLM interactions using simple Pascal-like scripts.
 
 ## ✨ Features
