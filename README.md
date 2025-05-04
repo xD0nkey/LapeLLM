@@ -82,7 +82,6 @@ begin
   end;
 end.
 ```
-[Explain how to run this script, e.g., LapeLLMHost --script scripts/simple_prompt.lape]
 
 For detailed usage, configuration, scripting API, and more examples, see the Usage Guide.
 
