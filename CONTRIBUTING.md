@@ -4,11 +4,6 @@ First off, thank you for considering contributing to LapeLLM! Your involvement h
 
 Please take a moment to review this document to understand how you can contribute effectively.
 
-## Code of Conduct
-
-[Optional but Recommended: Add a `CODE_OF_CONDUCT.md` file. Link it here.]
-Example: "All participants are expected to follow the [LapeLLM Code of Conduct](CODE_OF_CONDUCT.md). Please report unacceptable behavior to [contact method, e.g., project maintainer email or via GitHub Issues]."
-
 ## How Can I Contribute?
 
 * **Reporting Bugs:** If you find a bug in the host library, `lape` integration, script execution, or LLM communication, please search the [Issues](https://github.com/xD0nkey/LapeLLM/issues) to see if it's already reported. If not, open a new issue with a clear title, detailed description, and steps to reproduce it.
