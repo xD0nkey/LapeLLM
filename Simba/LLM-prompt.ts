@@ -158,6 +158,8 @@ In Pascal (which Simba is based on), you must declare a type before you use it.
 
 You need to wrap 'WriteLn' and 'Wait' statements in the else part inside a begin...end; block.
 
+XPBar.EarnedXP() doesn't take parameters. It works by resetting an internal flag and returning True if XP has been gained since the last time it was called.
+
 It’s primarily used for game automation via pixel detection.
 
 Libraries like SRL-6 extend capabilities with standardized wrappers.
