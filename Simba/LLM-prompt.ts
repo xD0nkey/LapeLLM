@@ -150,6 +150,14 @@ WaitRange(1000, 3000); // waits between 1 and 3 seconds
 Important Concepts for the LLM
 Simba is based on Pascal syntax.
 
+### Important things to know about coding in Simba/Lape
+
+The way {$DEFINE} works in Simba/Lape is primarily for conditional compilation ({$IFDEF}, {$IFNDEF}). It defines a symbol for the compiler, but it doesn't automatically create a runtime constant or variable with that name that you can directly use in string concatenation like that.
+
+In Pascal (which Simba is based on), you must declare a type before you use it.
+
+You need to wrap 'WriteLn' and 'Wait' statements in the else part inside a begin...end; block.
+
 It’s primarily used for game automation via pixel detection.
 
 Libraries like SRL-6 extend capabilities with standardized wrappers.
