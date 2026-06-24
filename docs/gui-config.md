@@ -7,9 +7,7 @@ Based on (path typical for a Windows installation, may vary):
 - `%LocalAppData%\Simba\Includes\WaspLib\utils\settings.simba` (source for `TWLSettings`, WaspLib's own global `TConfigJSON` instance)
 - `%LocalAppData%\Simba\Includes\WaspLib\utils\config.simba` (source for `TConfigJSON` and `TConfigINI`)
 - `%LocalAppData%\Simba\Includes\WaspLib\utils\forms\formutils.simba` (source for `TLabeledEdit`/`TLabeledCheckBox`/`TLabeledComboBox`/`TLabeledPanel`/`TControl.AdjustToDPI`)
-- Two generations of the same example GUI code (referred to as "aeroguardians" in the research, an older rev 21 and a newer rev 19/38 style) — not included in this repo
-- A large, complex combat script with multiple GUI tabs (referred to as "gemstone crab slayer" in the research) — a good example but also a cautionary example of mixed old/new style; not included in this repo
-- Spot samples from roughly 20 additional WaspLib scripts examined during the research, not included in this repo (see the `.simba` policy in the root `README.md`)
+- Multiple real script examples examined during research, not included in this repo (see the `.simba` policy in the root `README.md`)
 
 ---
 
@@ -68,7 +66,7 @@ end.
 Two things that are easily misunderstood:
 
 - `Self.Setup(...)` is **not** the same as `Self.Run()`. `Setup` only builds the form's shell (window, PageControl, Start button). `Run` is the wrapper that (1) optionally calls your `Setup` logic if you override `Run` entirely, (2) actually shows the window via `Sync(@Self.Show)`, and (3) sets up RemoteInput based on saved settings. **Override `Run`, not `Show`,** and always finish with `inherited;`.
-- You can also override `TScriptForm.Setup` instead of `Run` if you want to add things directly into the skeleton build (the new aeroguardians does this, see §5). Both patterns appear in real scripts - pick whichever feels more natural, but never forget `inherited`.
+- You can also override `TScriptForm.Setup` instead of `Run` if you want to add things directly into the skeleton build (a newer example uses that pattern, see §5). Both patterns appear in real scripts - pick whichever feels more natural, but never forget `inherited`.
 
 ---
 
@@ -76,7 +74,7 @@ Two things that are easily misunderstood:
 
 The standard pattern is `with control do begin Create(parent); ... end;`. `parent` is usually a `TTabSheet` (a tab) or a `TPanel`.
 
-Example taken (simplified) from `aeroguardians.simba` (rev 38), `CreateSettingsTab`:
+Example taken (simplified) from a representative GUI example, `CreateSettingsTab`:
 
 ```pascal
 var
@@ -167,7 +165,7 @@ end;
 
 But for things that don't have a shortcut (e.g. `SetOnChange`, `SetOnClick`, `SetStyle(csDropDownList)`) you must go through the underlying control explicitly: `myCombobox.ComboBox.SetOnChange(@Self.SomethingOnChange);`, `myEdit.Edit.SetOnKeyPress(@Edit.NumberField);`.
 
-Example of a dropdown (combobox), a pattern seen in several scripts (`wasp_woodcutter`, `wasp_jewelry_smelter`, etc.):
+Example of a dropdown (combobox), a pattern seen in several WaspLib-style scripts:
 
 ```pascal
 var
@@ -187,7 +185,7 @@ begin
 end;
 ```
 
-`TPanel`/`TImage` are mostly used for background images and visual grouping. A recurring (copy-pasted) pattern in several "students_*" and "aerofisher" scripts:
+`TPanel`/`TImage` are mostly used for background images and visual grouping. A recurring pattern in several older scripts:
 
 ```pascal
 var
@@ -287,9 +285,9 @@ begin
 end;
 ```
 
-**Reuse these instead of rebuilding account management/antiban GUI yourself.** In `aeroguardians (4).simba` (rev 21) and rev 38, the entire account management is already `Self.CreateAccountManager()` - it is *not* handwritten in any of the scripts we reviewed. Writing your own account manager with your own INI rows for users/passwords is extra code, extra surface for bugs, and you lose things like the automatic `RewriteCredentials()` sync against `credentials.simba` and the `Antiban.SetupBiometrics()` link that `CreateAccountManager` handles automatically on account switch.
+**Reuse these instead of rebuilding account management/antiban GUI yourself.** In multiple modern scripts, the entire account management is already `Self.CreateAccountManager()` - it is *not* handwritten in the examples we reviewed. Writing your own account manager with your own INI rows for users/passwords is extra code, extra surface for bugs, and you lose things like the automatic `RewriteCredentials()` sync against `credentials.simba` and the `Antiban.SetupBiometrics()` link that `CreateAccountManager` handles automatically on account switch.
 
-`CreateBankSettingsV2` also exists (a newer, simpler variant that returns a `TLabeledComboBox` instead of a whole tab+map image) - seen in `wasp_enchanter.simba` and `wasp_herblore.simba`. Use it if you just want a simple bank dropdown embedded in an existing tab, not a full map viewer.
+`CreateBankSettingsV2` also exists (a newer, simpler variant that returns a `TLabeledComboBox` instead of a whole tab+map image). Use it if you just want a simple bank dropdown embedded in an existing tab, not a full map viewer.
 
 ---
 
@@ -314,20 +312,20 @@ type
   end;
 ```
 
-`Self.Config.Setup('scriptname')` is called **once**, conveniently in your `Run` or `Setup` override (the new aeroguardians does it in `Setup`):
+`Self.Config.Setup('scriptname')` is called **once**, conveniently in your `Run` or `Setup` override (a newer example uses that pattern in `Setup`):
 
 ```pascal
 procedure TConfig.Setup(caption: String = 'Script Form'; size: TPoint = [750, 500]; allowResize: Boolean = False); override;
 begin
   inherited;
-  Self.Config.Setup('aeroguardians');   // creates/opens Configs/aeroguardians.json
+  Self.Config.Setup('scriptname');   // creates/opens Configs/scriptname.json
   // ... the rest of your custom setup (background image, Start button redesign, etc.) ...
 end;
 ```
 
 `Setup('scriptname')` doesn't look for a path separator in the string → the file ends up at `AppPath + 'Configs' + DirectorySeparator + 'scriptname.json'` (`.json` is appended automatically if you haven't already written it).
 
-**Complete pattern around ONE control** (create → read saved value if it exists, otherwise default → save new value on Start), taken from real code in `aeroguardians.simba` (rev 38):
+**Complete pattern around ONE control** (create → read saved value if it exists, otherwise default → save new value on Start), taken from a representative real-world example:
 
 When building the control (in your tab-build function):
 
@@ -462,13 +460,13 @@ Then all controls for that group are created with `owner := minPanel` instead of
 
 ## 7. Common pitfalls
 
-1. **The `GetChild` name doesn't exactly match what you set with `SetName`.** Remember the suffix rules in §3: a `TLabeledEdit` with `SetName('box_run')` produces an underlying `TEdit` under the name `box_run_edit`, NOT `box_run`. If you forget the suffix you get `nil` back from `GetChild`, and the next call (`.GetText()` on `nil`) crashes. We have seen real examples of exactly this kind of name mismatch in `students_only_farm_and_bhruns.simba` (a `GetChild('lcb_fguildtp_combobox')` where the neighboring variables consistently use the `_caption` suffix - likely a copy-paste bug).
+1. **The `GetChild` name doesn't exactly match what you set with `SetName`.** Remember the suffix rules in §3: a `TLabeledEdit` with `SetName('box_run')` produces an underlying `TEdit` under the name `box_run_edit`, NOT `box_run`. If you forget the suffix you get `nil` back from `GetChild`, and the next call (`.GetText()` on `nil`) crashes. This kind of mismatch has appeared in older examples as a simple copy-paste naming bug.
 
 2. **Reading controls BEFORE the form has closed / wrong order of `inherited`.** The `StartScript` override must call `inherited` (which calls `Self.Form.Close()`), but you can still read control values AFTER that - the form is visually closed but the objects are still alive until the procedure returns. What actually goes wrong in practice is if you try to read controls in a completely different procedure that runs after the `TConfig` instance has already gone out of scope, or if you forget `inherited` entirely (in which case the window never closes - the user sees a frozen GUI that does nothing when Start is clicked).
 
-3. **Forgotten `TControl.AdjustToDPI(...)`.** Raw pixel values (`SetLeft(325)`, `SetTop(3)`) work perfectly on your own machine but end up mis-positioned or too small on a screen with different Windows scaling. We have found several examples of this in real scripts (`charter_shop_crafting (1).simba`, `bigaussie_gemstone_crab_slayer.simba`) sitting in the middle of code that otherwise consistently DPI-scales - this often happens when a control is copied and the new number is left unwrapped.
+3. **Forgotten `TControl.AdjustToDPI(...)`.** Raw pixel values (`SetLeft(325)`, `SetTop(3)`) work perfectly on your own machine but end up mis-positioned or too small on a screen with different Windows scaling. This has appeared in several real scripts sitting in the middle of otherwise consistent DPI-scaled code, and it often happens when a control is copied and the new number is left unwrapped.
 
-4. **Mixing old INI style with new JSON style in the same script.** `bigaussie_gemstone_crab_slayer.simba` is a concrete example: it uses `Self.CreateAccountManager(tab)` (a modern WaspLib building block) AND its own `ReadINI`/`WriteINI` calls against a handwritten `Configs/BASettings.ini` file with dozens of `WriteINI(Username + ' Gemstone Crab Settings', 'UseBoosts', BoolToStr(...), 'Configs/BASettings.ini')` lines in a `SaveUserSettings` procedure. It works, but:
+4. **Mixing old INI style with new JSON style in the same script.** A larger real-world example uses `Self.CreateAccountManager(tab)` (a modern WaspLib building block) alongside its own `ReadINI`/`WriteINI` calls against a handwritten settings file. It works, but:
    - You maintain two completely different persistence APIs in the same file.
    - The INI style requires YOU to manually type-convert every value (`BoolToStr`/`StrToBoolDef`/`IntToStr`/`StrToIntDef`) in both directions, while `TConfigJSON.Put`/`GetBoolean` does it for you.
    - There is a risk that one setting gets saved in the `.ini` file while another, related setting ends up saved in the `.json` file (or WaspLib's own `WLSettings`) - hard to find "where is X actually saved" when reading the code later.

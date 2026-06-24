@@ -4,6 +4,8 @@ This folder captures useful technical information that reaches this repository i
 
 This information can be valuable, but it did not arrive through the same verification process as the rest of `docs/`. A community note must not be treated as equivalent to a confirmed `docs/` topic file unless it has actually been confirmed by source code, a working example, local repository documentation, or official/reference documentation. This folder exists so that useful-but-unverified information has a place to live without being mixed into, or mistaken for, verified documentation.
 
+Community notes are complementary to the primary repository docs, not a replacement for them. SRL-T and WaspLib documentation remain the core references for script generation, and a community note should only be used as a lead until a local example, source reference, or official documentation confirms it.
+
 ## Policy
 
 1. Community notes are useful leads, not authoritative documentation.

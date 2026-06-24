@@ -15,8 +15,7 @@ Sources I have read line by line to verify this:
 - `SRL-T/osr/interfaces/chooseoption.simba`, `SRL-T/osr/interfaces/login.simba`
 - `WaspLib/osr/interfaces/gametabs/inventory.simba`, `WaspLib/osr/interfaces/mainscreen/bank.simba`,
   `WaspLib/osr/interfaces/chat/chat.simba` (WaspLib's overrides of SRL-T)
-- My own scripts in `Ny mapp/`, `aeroguardians (4).simba` vs `aeroguardians.simba`, `bigaussie_gemstone_crab_slayer.simba`
-  etc., to see actual usage (and actual mistakes) in practice.
+- Multiple real script examples examined during research, to see actual usage (and actual mistakes) in practice.
 
 ---
 
@@ -56,9 +55,8 @@ NOT:
 WriteLn(Bank.Bounds());        // WRONG — doesn't compile (or, worse, compiles against the wrong overload)
 ```
 
-See §9 "Common pitfalls" — this is a mistake we've made ourselves several times (found verbatim in
-`wrath_runecrafter.simba` line 104: `Minimap.Bounds()`, and `ptk_starminer.simba` lines 184/235/245:
-`Chat.Bounds()`). The confusion likely comes from the fact that many OTHER types in Simba (`TPointArray`,
+See §9 "Common pitfalls" — this is a mistake we've made ourselves several times in older examples
+(`Minimap.Bounds()` and `Chat.Bounds()` in different scripts). The confusion likely comes from the fact that many OTHER types in Simba (`TPointArray`,
 `TCuboid`, etc.) actually DO have a `.Bounds()` method (computing a bounding box from points), so the
 pattern "`.Bounds()` with parentheses" is valid there but wrong on a `TRSInterface` object.
 
@@ -296,7 +294,7 @@ Chat.FindMessage('Buying gf');                           // search ALL rows for 
 Chat.FindMessage('do not have enough', [CHAT_COLOR_BLACK]); // restrict to a specific CHAT_COLOR_ constant
 ```
 `CHAT_MESSAGE_COLORS` includes `CHAT_COLOR_BLACK/MAROON/BLUE/PURPLE/RED/LIGHT_RED/WHITE/LIGHT_PURPLE/GREEN`.
-**The common failsafe pattern** (seen in `aeroguardians`, `bigaussie_gemstone_crab_slayer`, etc.):
+**The common failsafe pattern** (seen in several larger scripts):
 ```pascal
 if Chat.FindMessage('You do not have enough runes', [CHAT_COLOR_BLACK]) then
   // handle the error — e.g. abort the craft state, switch to the gather state
@@ -474,7 +472,7 @@ SomeInterface.ClickCloseButton(pressEscape);// clicks X or presses Escape
 
 1. **`.Bounds()` with parentheses.** `TRSInterface.Bounds` is A FIELD (`TBox`), never a method. Write
    `Bank.Bounds`, not `Bank.Bounds()`. We've made this mistake ourselves — found verbatim in
-   `wrath_runecrafter.simba` (`Minimap.Bounds()`) and `ptk_starminer.simba` (`Chat.Bounds()` three times).
+   older examples with `Minimap.Bounds()` and `Chat.Bounds()` in several places.
    The confusion comes from OTHER types (`TPointArray.Bounds()`, `TCuboid.Bounds()`) legitimately HAVING
    a `.Bounds()` method — always check which TYPE the variable has before pasting in `()`.
 

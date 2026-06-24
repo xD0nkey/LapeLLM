@@ -2,7 +2,7 @@
 
 This file goes deeper into the antiban layer than `wasplib-script-anatomy.md` §8 (a short introduction there). The goal here: concrete recipes for adding, overriding, and debugging antiban behavior in a new script.
 
-Sources this is based on: `SRL-T/osr/antiban.simba` (base implementation), `WaspLib/osr/antiban/antiban.simba` (overrides + default tasks), `WaspLib/utils/biometrics.simba` (BioHash/BioWait/BioDice), `WaspLib/Configs/wasplib.json` (default settings), as well as the reviewed scripts `aeroguardians (4).simba`/`aeroguardians.simba` (old hand-built style) and `bigaussie_gemstone_crab_slayer.simba` (rich, modern antiban code: world hopping, custom break overrides, `HandleFinishTask` safety check).
+Sources this is based on: `SRL-T/osr/antiban.simba` (base implementation), `WaspLib/osr/antiban/antiban.simba` (overrides + default tasks), `WaspLib/utils/biometrics.simba` (BioHash/BioWait/BioDice), `WaspLib/Configs/wasplib.json` (default settings), as well as multiple real scripts examined during research, including one older hand-built example and one larger modern example with world hopping, custom break overrides, and a `HandleFinishTask` safety check.
 
 ---
 
@@ -75,7 +75,7 @@ begin
 end;
 ```
 
-You can temporarily disable breaks/sleeps during sensitive sequences with `Antiban.DoAntiban(False, False);` (only tasks run, no risk of a break triggering in the middle of, e.g., a bank transaction or combat) and then make a separate, full call `Antiban.DoAntiban;` (equivalent to `True, True`) at a safe point. This pattern appears throughout `aeroguardians.simba`:
+You can temporarily disable breaks/sleeps during sensitive sequences with `Antiban.DoAntiban(False, False);` (only tasks run, no risk of a break triggering in the middle of, e.g., a bank transaction or combat) and then make a separate, full call `Antiban.DoAntiban;` (equivalent to `True, True`) at a safe point. This pattern appears in older hand-built examples:
 
 ```pascal
 while Self.GetPower = 100 do
@@ -172,7 +172,7 @@ begin
 end;
 ```
 
-This pattern is exactly what `bigaussie_gemstone_crab_slayer.simba` does (with the comment "Disablechat antiban becaUse of chatbot and like who does this" — the chat tab must not be toggled away, because the script's own failsafes read the chat).
+This pattern is also used in a larger modern example (with a comment about disabling chat antiban because the script's own failsafes read the chat).
 
 **The `if Self.Tasks <> [] then Exit;` guard in `SetupTasks` (and the corresponding one in `SetupBreaks`/`SetupSleep`):** this makes the methods idempotent — if `Self.Tasks` already contains something (e.g., because YOU already ran your own `Antiban.AddTask` calls BEFORE `Antiban.Setup()`/`SetupTasks()` ran), WaspLib's default list skips itself entirely. The call order therefore matters:
 
@@ -199,7 +199,7 @@ begin
 end;
 ```
 
-Pattern B — add YOUR OWN breaks/hooks ON TOP OF the default tasks (from `bigaussie_gemstone_crab_slayer.simba`, note `inherited` runs FIRST here since the intent is for the default tasks to already exist before potentially clearing `Self.Breaks`):
+Pattern B — add YOUR OWN breaks/hooks ON TOP OF the default tasks (from a larger modern example, note `inherited` runs FIRST here since the intent is for the default tasks to already exist before potentially clearing `Self.Breaks`):
 
 ```pascal
 procedure TAntiban.Setup(); override;
@@ -224,7 +224,7 @@ begin
 end;
 ```
 
-Pattern C — **entirely custom** tasks, ignoring WaspLib's defaults (old hand-built style in `aeroguardians.simba`, which doesn't inherit `TBaseScript` at all but calls `SetupAntiban` manually from its own `Init`):
+Pattern C — **entirely custom** tasks, ignoring WaspLib's defaults (old hand-built style in an older example, which doesn't inherit `TBaseScript` at all but calls `SetupAntiban` manually from its own `Init`):
 
 ```pascal
 procedure TScript.SetupAntiban();
@@ -337,7 +337,7 @@ begin
 end;
 ```
 
-And the `TBaseScript.DoAntiban` override itself in `bigaussie_gemstone_crab_slayer.simba` additionally pauses/resumes the script's OWN `TimeRunning` stopwatch and WaspLib's activity/API timer around the **entire** `DoAntiban` call (not just around breaks), since otherwise even short tasks would be counted into "time played":
+And the `TBaseScript.DoAntiban` override itself in a larger modern example additionally pauses/resumes the script's OWN `TimeRunning` stopwatch and WaspLib's activity/API timer around the **entire** `DoAntiban` call (not just around breaks), since otherwise even short tasks would be counted into "time played":
 
 ```pascal
 function TBaseScript.DoAntiban(checkBreaks: Boolean = True; checkSleeps: Boolean = True): Boolean; override;

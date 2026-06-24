@@ -12,7 +12,7 @@ Everything verified directly against the source code in:
 - `SRL-T/osr/interfaces/mainscreen/mainscreen.simba`
 - `WaspLib/osr/antiban/antiban.simba`
 - `WaspLib/utils/input/mousezoom.simba`
-- Practical examples from `Ny mapp/*.simba`, `aeroguardians.simba`, `bigaussie_gemstone_crab_slayer.simba`.
+- Practical examples from multiple real scripts examined during research.
 
 ---
 
@@ -35,7 +35,7 @@ These are usually set in your own override of `TAntiban.Setup()` (or directly in
 procedure if you're not overriding `Setup`). The values are on the same scale as the zoom slider in the
 game's Options tab (0 = fully zoomed out, 100 = fully zoomed in).
 
-Concrete examples from actual scripts (`Ny mapp/*.simba`):
+Concrete examples from multiple real scripts:
 
 ```pascal
 // gem_miner: tight zoom range, the miner stays close to its target
@@ -52,11 +52,11 @@ begin
   inherited;
 end;
 
-// wasp_enchanter / wasp_herblore
+// representative WaspLib-style examples
 Antiban.MinZoom := 15;
 Antiban.MaxZoom := 85;
 
-// wasp_blast_furnace: very zoomed out (a lot to keep track of in the room)
+// a very zoomed-out example: a lot to keep track of in the room
 Antiban.MinZoom := 0;
 Antiban.MaxZoom := 10;
 ```
@@ -338,7 +338,7 @@ end;
 
 ### 3.3 The override pattern: disabling automatic camera rotation
 
-Several fielded scripts (e.g. `aeroguardians.simba`) override `MakePointVisible` and `SetZoomToPoint`
+Several real scripts override `MakePointVisible` and `SetZoomToPoint`
 to REMOVE the rotation part entirely:
 
 ```pascal

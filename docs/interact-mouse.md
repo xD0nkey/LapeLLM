@@ -10,7 +10,7 @@ Sources verified against actual code (not just memory):
 - `SRL-T/osr/interfaces/chooseoption.simba` (ChooseOption.Open/Select/HasOption/Close)
 - `SRL-T/osr/map/objects.simba` (TRSMapObject / TRSObjectV2 / TRSNPCV2 — Click/WalkClick/Hover/WalkHover/Find)
 - `WaspLib/osr/walker/objects/rsobjects.simba`, `rsnpcs.simba` (concrete object/NPC instances built on top of the above)
-- Real scripts: `aeroguardians (4).simba`, `wasp_blast_furnace.simba`, `wasp_herblore.simba`, `students_mhomes_+farm_bhruns.simba`, among others.
+- Multiple real scripts examined during research, among others.
 
 ---
 
@@ -121,7 +121,7 @@ if Inventory.MouseItem('Rune pouch') then
 
 OSRS was updated in 2025 so that left-clicking e.g. rune pouches **dynamically toggles** between "Fill" and "Empty" depending on whether the pouch is already full, whether the inventory has room, and other context. A script that blindly left-clicks a pouch risks doing the opposite of what it intended (filling when it meant to empty, or vice versa), which in the worst case drops runes on the floor or gets stuck in a loop.
 
-The robust solution, implemented in `aeroguardians (4).simba` → `TScript.HandlePouches`:
+The robust solution, implemented in an older example script → `TScript.HandlePouches`:
 
 ```pascal
 // Left-click dynamically swaps between Fill/Empty depending on pouch + inventory state (2025 update) -
@@ -235,7 +235,7 @@ RSObjects.Get('Furnace').WalkSelectOption(['Smelt']);
 
 ### Older, manually written pattern: TMSObject (found in older scripts, e.g. aeroguardians rev 21)
 
-Before `TRSObjectV2`/WaspLib existed (or in scripts that chose not to use them), it was common to build your own small record for static objects (`TMSObject` in `aeroguardians (4).simba` — this is NOT an SRL-T/WaspLib type name, but a script-specific, hand-written struct). The pattern is still worth recognizing since it's the manual implementation of exactly the same idea that `TRSMapObject` automates:
+Before `TRSObjectV2`/WaspLib existed (or in scripts that chose not to use them), it was common to build your own small record for static objects in older examples (`TMSObject` — this is NOT an SRL-T/WaspLib type name, but a script-specific, hand-written struct). The pattern is still worth recognizing since it's the manual implementation of exactly the same idea that `TRSMapObject` automates:
 
 ```pascal
 TMSObject = record
@@ -340,7 +340,7 @@ function TRSMapObject.WalkClick(leftClick: Boolean = True; attempts: Int32 = 2):
 
 Increase `attempts` for objects known to be hard to find (obscured, small, moving) — e.g. `RSObjects.Get('...').WalkClick(True, 5)`.
 
-A custom retry pattern when writing code on top of these (common in every script reviewed, e.g. `students_mhomes_+farm_bhruns.simba`):
+A custom retry pattern when writing code on top of these (common in many scripts reviewed):
 
 ```pascal
 var attempts: Int32;
@@ -404,7 +404,7 @@ WaitUntil(not Minimap.IsPlayerMoving(), 100, 5000);
 Just inserting a fixed `Wait(2000)` "to be safe" works but is both slow and not robust to variation — prefer `WaitUntil` against a concrete condition when one is available.
 
 **3. Not handling a ChooseOption menu that was already open from a previous interaction.**
-If a previous step left a context menu open (e.g. a failed attempt, or the player right-clicked by mistake) and you then try to hover/click a new target, the menu interferes with everything — the mouse movement happens "behind" or "through" the menu. SRL-T's own `Hover`/`_HoverHelper` handles this automatically (checks `ChooseOption.IsOpen()` first), but if you write your own low-level click code, you must check this yourself in your state machine, exactly as in `wasp_blast_furnace.simba`/`wasp_herblore.simba`:
+If a previous step left a context menu open (e.g. a failed attempt, or the player right-clicked by mistake) and you then try to hover/click a new target, the menu interferes with everything — the mouse movement happens "behind" or "through" the menu. SRL-T's own `Hover`/`_HoverHelper` handles this automatically (checks `ChooseOption.IsOpen()` first), but if you write your own low-level click code, you must check this yourself in your state machine, exactly as in several WaspLib-style examples:
 ```pascal
 if ChooseOption.IsOpen() then
   Exit(EMyState.CLOSE_CONTEXT_MENU);  // handle this as its OWN state, before anything else

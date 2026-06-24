@@ -2,7 +2,7 @@
 
 This file is the reference for **how to make sure an OSRS bot script doesn't crash, get stuck in an infinite loop, or cause damage (leave the account visibly logged in, spam the same error over and over) when something unexpected happens**. This is NOT the same topic as antiban (randomized timing, human-like behavior to avoid detection) — that has its own separate file. Here it's all about defensive programming: log clearly, put an upper bound on everything that waits, count failures, and escalate cleanly when something goes wrong.
 
-Sources: `aeroguardians (4).simba`/`aeroguardians.simba`, and above all `bigaussie_gemstone_crab_slayer (3).simba` in `Ny mapp` — that script is unusually thorough, with Discord webhooks, a `CheckSystemUpdate` pattern, HP failsafes, and a `ConsecutiveFailedAttacks` counter. See also `script-anatomy.md` §11 for a brief overview — this file goes deeper into the same topic.
+Sources: installed WaspLib/SRL-T helpers plus multiple real scripts examined during research. One larger example script is especially thorough, with Discord webhooks, a `CheckSystemUpdate` pattern, HP failsafes, and a `ConsecutiveFailedAttacks` counter. See also `script-anatomy.md` §11 for a brief overview — this file goes deeper into the same topic.
 
 ---
 
@@ -77,7 +77,7 @@ Why: if the script just dies without logging out, the account is left logged in 
 
 The pattern: keep a counter in the script's main record, increment it on every failure, **reset it to 0 on every success**, and escalate (change strategy or terminate) once it passes a threshold. This is the difference between tolerating a single, transient failure and detecting that something is *systematically* wrong (out of ammo, wrong state, the game has changed).
 
-From `bigaussie_gemstone_crab_slayer (3).simba`:
+From a larger representative example script:
 
 ```pascal
 type
@@ -392,7 +392,7 @@ end;
 
 Note the design choice of **"wait until we're not in combat before logging out"** — a blind, immediate logout in the middle of a dangerous fight can be worse than letting the restart take the script down. The call to `Self.CheckSystemUpdate()` is then placed in the main loop (the same place as `Self.CheckHourlyReport()` and other status checks) so it gets checked every iteration (with internal throttling).
 
-**A more primitive variant** (without OCR, just a hard time limit set by the user/GUI): `aeroguardians (4).simba` has the same idea but simpler — a `Bot.ShutdownTime` compared against `GetTimeRunning()`:
+**A more primitive variant** (without OCR, just a hard time limit set by the user/GUI): an older example has the same idea but simpler — a `Bot.ShutdownTime` compared against `GetTimeRunning()`:
 
 ```pascal
 if GetTimeRunning() > Bot.ShutdownTime then

@@ -17,6 +17,12 @@ This folder is a knowledge base for writing correct Lape code for OldSchool Rune
 | [ocr-color.md](ocr-color.md) | OCR (`TOCRColorFilter`, `RS_FONT_*`), color detection (`CTS0/1/2`), `FindColors`/`FindDTM` |
 | [items-bank.md](items-bank.md) | `TRSItem`/`TRSItemArray`, bank loadouts, withdraw retry with search field, deposit patterns |
 | [failsafes.md](failsafes.md) | Logging, `TerminateScript`, timeouts (`TCountdown`/`WaitUntil`), chat-based failsafes, screenshots, Discord webhooks |
+| [srl-t-reference-policy.md](srl-t-reference-policy.md) | When and how to consult SRL-T documentation while generating or reviewing scripts |
+| [wasplib-reference-policy.md](wasplib-reference-policy.md) | When and how to consult WaspLib documentation while generating or reviewing scripts |
+| [library-relationship.md](library-relationship.md) | How SRL-T and WaspLib relate in this repository and why symbol origin matters |
+| [script-generation-workflow.md](script-generation-workflow.md) | A conservative workflow for AI agents working on Lape script tasks |
+| [quality-review.md](quality-review.md) | Review notes from the repository audit against SRL-T and WaspLib documentation |
+| [known-gaps.md](known-gaps.md) | Current uncertainties and missing examples that still need confirmation |
 | [script-anatomy.md](script-anatomy.md) | Full overview: file anatomy, state machine, `TBaseScript` hierarchy, recommended workflow for new scripts |
 | [legacy-notes.md](legacy-notes.md) | What was carried over from the previous version of this repository, and why |
 

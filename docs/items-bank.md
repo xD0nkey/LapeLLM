@@ -11,7 +11,7 @@ an entire script fits together around this. Everything here is verified against 
 - `SRL-T\osr\interfaces\mainscreen\bank.simba` (TRSBank, TRSBankItem, WithdrawHelper, FindItem, Search, DepositAll/Items)
 - `SRL-T\osr\interfaces\core\item_interface.simba` (TRSItemInterface — the base that both `Inventory` and `Bank.Items` inherit from)
 - `WaspLib\osr\interfaces\mainscreen\bank.simba` (DepositRandomItems, DepositAllBut)
-- The scripts `bigaussie_gemstone_crab_slayer.simba` (WithdrawHelper/ProgressiveBankSearch/HandleBankItems) and `wasp_blast_furnace.simba`/`wasp_herblore.simba` (TRSBankItem loadouts)
+- Multiple real scripts examined during research, including examples that use `WithdrawHelper`/`ProgressiveBankSearch` and `TRSBankItem` loadouts
 
 ---
 
@@ -112,7 +112,7 @@ if Inventory.CountItemStack('Coins') >= 1000 then ...
 
 A robust pattern for when you don't know in advance whether an item is stackable (e.g. a
 generated loadout item) is to test the stack first and fall back to `CountItem`
-if the stack is 0 — that is exactly what `bigaussie_gemstone_crab_slayer.simba` does:
+if the stack is 0 — that is exactly what a larger example script does:
 
 ```pascal
 function TScript.GetInventoryItemQuantity(item: TRSItem): Int32;
@@ -166,8 +166,7 @@ begin
 
 ### Build a loadout as a TRSBankItemArray
 
-The standard pattern (seen in `wasp_blast_furnace.simba`, `wasp_herblore.simba`, and
-`bigaussie_gemstone_crab_slayer.simba`) is to declare the loadout as a field on the
+The standard pattern (seen in several WaspLib-style examples and a larger modern script) is to declare the loadout as a field on the
 script's main record and populate it once in `Init`/`Setup`:
 
 ```pascal
@@ -187,7 +186,7 @@ begin
 end;
 ```
 
-Note the `wasp_blast_furnace.simba` style where each loadout item is stored in its
+Note the common style where each loadout item is stored in its
 own named field (`Self.BarB`, `Self.OreB`, `Self.CoalB`, ...) instead of a loose
 array — useful when different parts of the script need to reference *that specific* item object
 (e.g. to change its `.Quantity` dynamically at runtime based on price calculations).
@@ -270,7 +269,7 @@ if Bank.FindItem(item, itemBox) then
 
 ### Step 2: If that fails, open the search field and type letter by letter
 
-This is the `ProgressiveBankSearch` pattern from `bigaussie_gemstone_crab_slayer.simba`.
+This is the `ProgressiveBankSearch` pattern from a larger example script.
 The reason for typing letter by letter (instead of sending the whole
 string at once) is twofold: (1) it looks more human for antiban purposes, and (2)
 the search results in the bank interface update progressively — after only 1–2 letters the
@@ -407,7 +406,7 @@ Bank.DepositRandomItems([
 ]);
 ```
 
-(Example taken from `students_only_farm_and_bhruns.simba` — where the talisman
+(Example taken from an older real script — where the talisman
 `"Xeric's talisman"` is exactly the kind of item that is deliberately excluded from deposit
 because you want to reuse it for fast transport, not sell/store it every
 bank run.)

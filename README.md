@@ -21,6 +21,12 @@ Out of scope:
 - Production Lape scripts. This repository does not currently contain runnable `.simba` example scripts (see "Git and file handling" below) and does not claim to.
 - An LLM-calling host application. An earlier version of this repository described a hypothetical Free Pascal/Delphi application that would expose LLM provider APIs (OpenAI, Anthropic, etc.) to Lape scripts. That was never implemented and is not part of this repository's current direction. See `docs/legacy-notes.md`.
 
+## SRL-T and WaspLib as core references
+
+This repository is an AI documentation and instruction layer for conservative Lape script generation. SRL-T and WaspLib are both central references for the script ecosystem this repository targets. The repository does not replace either documentation set. Instead, it helps AI agents use those references safely by summarizing verified patterns, recording uncertainty, and pointing to the relevant source material before code is generated.
+
+The main goal is to reduce hallucinated syntax, fake APIs, wrong assumptions, invalid imports, unsupported function calls, and incorrect script structure. This is why the repository tracks uncertainty and missing examples instead of pretending every gap is already documented.
+
 ## What this repository is not
 
 - It is not a finished or exhaustive Lape/WaspLib reference. Coverage is uneven: some areas (interfaces, antiban, GUI/config, OCR/color, items/bank, failsafes, map/walking) have been deliberately researched and verified; many others have not been touched at all.
@@ -37,6 +43,12 @@ AGENTS.md               - the same operating rules, written for other AI coding 
 .gitignore               - excludes *.simba files from version control
 docs/
   README.md             - index of the docs/ folder
+  srl-t-reference-policy.md - when and how to consult SRL-T documentation
+  wasplib-reference-policy.md - when and how to consult WaspLib documentation
+  library-relationship.md - how SRL-T and WaspLib relate in this repository
+  script-generation-workflow.md - conservative workflow for AI agents
+  quality-review.md     - review notes against SRL-T and WaspLib documentation
+  known-gaps.md         - current uncertainty and missing-example tracking
   script-anatomy.md      - high-level overview of Lape/WaspLib script structure
   map-walking.md         - positioning and movement (Map, Objects, TRSObjectV2, legacy TRSWalker)
   interfaces.md          - fixed UI interfaces (Inventory, Bank, Chat, GameTabs, etc.)

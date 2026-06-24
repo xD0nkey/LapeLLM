@@ -29,6 +29,15 @@ This repository is a documentation and instruction layer that helps Claude (and 
 
 **Precedence rule:** if anything in `docs/` conflicts with external WaspLib documentation, or with general training knowledge about Pascal/Delphi, `docs/` wins. The files in `docs/` were built by directly inspecting this project's scripts and the actually-installed SRL-T/WaspLib source code, not recalled from memory.
 
+## Reference and verification policy
+
+- SRL-T and WaspLib are both core references. Check both when the task may involve base-library behavior, higher-level wrappers, or a symbol whose origin is unclear.
+- Do not treat Lape as generic Pascal or Delphi. Treat it as the scripting language used in this ecosystem, and verify its actual behavior before relying on it.
+- Do not hallucinate includes, types, functions, procedures, methods, properties, or object ownership. If the origin or signature is not confirmed, say so explicitly.
+- Prefer documented SRL-T and WaspLib patterns over invented patterns. If an example appears to rely on an unconfirmed symbol, treat it as a lead rather than a rule.
+- Mark uncertainty explicitly instead of turning an assumption into a fact. Update `docs/known-gaps.md` when a repeated uncertainty blocks reliable script generation.
+- Community notes are leads, not proof. They may guide further investigation, but they do not replace source documentation or a working example.
+
 ## Required workflow before writing code
 
 Before writing or modifying any Lape/`.simba` content:
