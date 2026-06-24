@@ -1,96 +1,132 @@
 # LapeLLM
 
-LapeLLM integrates Large Language Models (LLMs) into [Free Pascal / Delphi] applications, leveraging the **lape** scripting engine for flexible prompt engineering, interaction control, and response handling. Define your LLM interactions using simple Pascal-like scripts.
+## Purpose
 
-## ✨ Features
+This repository is a documentation and instruction layer for AI coding agents (Claude and others) that write or modify Lape scripts. Lape is the Pascal-like scripting language used by Simba to automate OldSchool RuneScape, typically through the SRL-T and WaspLib libraries.
 
-* Interact with various LLMs (e.g., GPT models, Claude, etc.) via API calls.
-* Define complex LLM interaction logic using **lape** scripts.
-* Easily integrate LLM capabilities into existing or new [Free Pascal / Delphi] projects.
-* Provides a host API for `lape` scripts to manage prompts, parameters, and process results.
-* Designed for speed and broad platform compatibility inherent to FPC/Delphi and `lape`.
+The problem this repository addresses: language models do not reliably know Lape, Simba, SRL-T, or WaspLib. They are far more likely to have been trained on Pascal, Delphi, C, JavaScript, or Python, and they tend to fill gaps in their knowledge by inventing syntax, functions, types, or APIs that look plausible but do not exist. In a scripting environment like Simba, invented syntax does not just fail to compile — it can also compile into code that behaves differently from what was intended, because Lape is permissive and the runtime errors are not always obvious. Hallucinated WaspLib or SRL-T APIs are a specific and recurring version of this problem, because both libraries are large, change over time, and are not part of any model's standard training data in a verified way.
 
-## 🚀 Getting Started
+This repository exists to reduce that failure mode: to give an AI agent verified, current reference material before it writes code, and explicit rules for what to do when that material is incomplete.
 
-### Prerequisites
+## Scope
 
-* **Free Pascal Compiler (FPC):** Version `[e.g., 3.2.2]` or later, **OR** **Delphi:** Version `[e.g., 11 Alexandria]` or later.
-    * [Lazarus IDE](https://www.lazarus-ide.org/) is recommended for FPC development.
-* **`lape` Scripting Engine:** Ensure the `lape` engine units provided within this project are correctly referenced.
-* **LLM API Keys:** You will likely need API keys for the specific LLM services you intend to use (e.g., OpenAI, Anthropic). Store these securely (see Configuration).
-* [Any other dependencies, e.g., specific FPC/Delphi packages like Indy or Synapse for HTTP requests].
+In scope:
+- Documentation of Lape language behavior as actually observed in SRL-T/WaspLib source code and real scripts.
+- Documentation of SRL-T/WaspLib API usage patterns: interfaces, walking/mapping, antiban, GUI/config, OCR/color detection, items/bank, failsafes.
+- Operating instructions for AI coding agents working in this repository or using it as a reference (`CLAUDE.md`, `AGENTS.md`).
+- A clear process for what to do when documentation is missing or uncertain.
 
-### Installation
+Out of scope:
+- A general-purpose Pascal/Delphi/Free Pascal reference. Lape overlaps with Pascal syntax but is documented here only as it is actually used in Simba/SRL-T/WaspLib scripts.
+- Production Lape scripts. This repository does not currently contain runnable `.simba` example scripts (see "Git and file handling" below) and does not claim to.
+- An LLM-calling host application. An earlier version of this repository described a hypothetical Free Pascal/Delphi application that would expose LLM provider APIs (OpenAI, Anthropic, etc.) to Lape scripts. That was never implemented and is not part of this repository's current direction. See `docs/legacy-notes.md`.
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/xD0nkey/LapeLLM.git](https://github.com/xD0nkey/LapeLLM.git)
-    cd LapeLLM
-    ```
-2.  **Compile the Host Application/Library:**
-    * **Using Lazarus:** Open `LapeLLM.lpi` (or the main project file) and choose `Run > Build`.
-    * **Using Delphi:** Open `LapeLLM.dproj` (or the main project file) and choose `Project > Build LapeLLM`.
-    * **Using FPC command line:**
-        ```bash
-        # Adjust command as needed for your project structure
-        fpc LapeLLMHost.pas -O3 -o LapeLLMHost
-        ```
-3.  **Configure API Keys:** Set up your LLM API keys securely. This might involve environment variables, a configuration file, or secure storage. See [Usage Guide](USAGE.md#configuration). **Do not commit API keys directly into the repository.**
-4.  **Prepare Scripts:** Review the example `.lape` scripts in the `scripts/` directory.
+## What this repository is not
 
-### Quick Start / Basic Usage
+- It is not a finished or exhaustive Lape/WaspLib reference. Coverage is uneven: some areas (interfaces, antiban, GUI/config, OCR/color, items/bank, failsafes, map/walking) have been deliberately researched and verified; many others have not been touched at all.
+- It is not a guarantee that every statement in `docs/` is still correct. SRL-T and WaspLib are actively developed. Documentation here reflects a verified snapshot, not a live feed.
+- It is not a place to find ready-to-run bot scripts.
+- It is not a general AI-assistant configuration repository. Everything here is specific to writing Lape code correctly.
 
-**Example `lape` Script (`scripts/simple_prompt.lape`):**
+## Repository structure
 
-```pascal
-// Example lape script for a simple LLM prompt
-program SimplePrompt;
-
-var
-  LLM: TLLMInterface; // Assuming host provides an LLM interface object
-  prompt: String;
-  response: String;
-
-begin
-  // Get the LLM interface provided by the host
-  LLM := Host.GetLLMInterface(); // Hypothetical host function
-
-  if not Assigned(LLM) then
-  begin
-    Host.LogError('LLM Interface not available.');
-    Exit;
-  end;
-
-  // Configure the LLM call (optional, might use defaults)
-  // LLM.SetModel('gpt-4o');
-  // LLM.SetTemperature(0.7);
-
-  prompt := 'Explain the concept of "prompt engineering" in one sentence.';
-
-  Host.LogInfo('Sending prompt to LLM: ' + prompt);
-  response := LLM.Generate(prompt); // Synchronous generation
-
-  if LLM.HasError then
-    Host.LogError('LLM Error: ' + LLM.GetLastError)
-  else
-  begin
-    Host.LogInfo('LLM Response Received.');
-    // Assuming 'Print' is exposed by the host to show output
-    Print('LLM Response:');
-    Print(response);
-  end;
-end.
+```
+README.md              - this file
+CLAUDE.md               - operating rules for Claude sessions working in this repository
+AGENTS.md               - the same operating rules, written for other AI coding agents
+.gitignore               - excludes *.simba files from version control
+docs/
+  README.md             - index of the docs/ folder
+  script-anatomy.md      - high-level overview of Lape/WaspLib script structure
+  map-walking.md         - positioning and movement (Map, Objects, TRSObjectV2, legacy TRSWalker)
+  interfaces.md          - fixed UI interfaces (Inventory, Bank, Chat, GameTabs, etc.)
+  camera-minimap.md      - zoom, camera rotation, visibility checks
+  interact-mouse.md      - mouse interaction, uptext verification, ChooseOption
+  antiban.md             - TAntiban tasks, breaks, sleeps, biometrics
+  gui-config.md          - TScriptForm, GUI controls, TConfigJSON settings persistence
+  ocr-color.md           - OCR and color-detection patterns
+  items-bank.md          - items, inventory, and bank handling
+  failsafes.md           - logging, termination, timeouts, error handling
+  legacy-notes.md        - what was kept, rewritten, or archived from the previous version of this repository
+archive/
+  legacy/                - old repository content, preserved unchanged, no longer treated as current guidance
 ```
 
-For detailed usage, configuration, scripting API, and more examples, see the Usage Guide.
+## How AI agents should use this repository
 
-### 📖 Documentation
-* Usage Guide: Detailed instructions, configuration (API keys!), lape scripting for LLMs, and the Host API reference.
-* Contributing Guide: How to contribute to LapeLLM.
-* Changelog: History of changes to the project.
+An AI agent working on a Lape/Simba/WaspLib task in or with this repository should:
 
-### 🤝 Contributing
-Contributions are welcome! Help improve the core library, add support for more LLMs, write example scripts, or enhance documentation.
+1. Read `CLAUDE.md` (if running as Claude) or `AGENTS.md` (otherwise) before writing or modifying any script.
+2. Read `docs/README.md` to find which topic file in `docs/` is relevant to the task at hand.
+3. Read that topic file in full before writing code. Treat it as the primary source for syntax, types, and function behavior in that area.
+4. Compare any new code against patterns already documented in `docs/`, rather than inventing a new approach to a problem `docs/` already covers.
+5. When `docs/` does not cover something, say so explicitly rather than guessing. See "Uncertainty policy" below.
 
-### 📧 Contact
-For issues or questions, please use the GitHub Issues page.
+This repository is intended to be read by the agent, not just by a human maintainer. Sections in `CLAUDE.md`/`AGENTS.md` are written as direct operating instructions for that purpose.
+
+## Lape documentation policy
+
+`docs/` is the primary source of truth for this repository, specific to the project: it is built from direct inspection of installed SRL-T/WaspLib source code and real scripts, not from general training knowledge about Pascal-family languages.
+
+Lape is its own language. It is Pascal-like, but it is not Pascal, Delphi, or Free Pascal, and it must not be documented or reasoned about as if it were. Where `docs/` does not state that a Pascal/Delphi feature exists in Lape, it should not be assumed to exist.
+
+Documentation in `docs/` should be treated as accurate at the time it was written, not as permanently authoritative. SRL-T and WaspLib are under active development. If real code contradicts a `docs/` file, the real code wins, and the `docs/` file should be corrected.
+
+## WaspLib reference policy
+
+WaspLib (and the underlying SRL-T library) is large, and this repository does not document all of it. The external resources below are secondary references, to be used only when `docs/` does not already answer the question:
+
+1. <https://github.com/torwent/wasplib> — source code, the highest-trust external source since it reflects what actually ships.
+2. <https://torwent.github.io/WaspLib/> — reference documentation, which can lag behind the actual source code.
+
+Secondary does not mean disposable: when `docs/` is silent on something, checking these sources is expected, not optional. But nothing pulled from these sources should be presented with the same confidence as something confirmed in `docs/`, and if something from these external sources conflicts with `docs/`, that conflict must be stated explicitly rather than silently resolved in either direction.
+
+Using WaspLib as a secondary reference is not permission to invent a plausible-sounding WaspLib API. If neither `docs/` nor these sources confirm something, it is unconfirmed, full stop.
+
+## Uncertainty policy
+
+This repository treats documented uncertainty as more valuable than confident-sounding guesses.
+
+- If something is not covered by `docs/` and cannot be confirmed against the WaspLib/SRL-T source, that must be stated plainly, not papered over.
+- Guessed syntax must never be presented as working code.
+- When uncertainty blocks an answer, the correct response is to say what is missing — a specific documentation file, a real script example, or a specific function's source — not to fill the gap with a plausible-sounding invention.
+
+See `CLAUDE.md`/`AGENTS.md` for the exact required phrasing and workflow.
+
+## Working with examples
+
+This repository does not currently include runnable `.simba` example scripts. If you are extending `docs/` or asking an AI agent to solve a problem not yet covered:
+
+- Provide a real script excerpt (a function, a record, an include chain) rather than a description of what you want the code to do. Concrete, real code is what resolves uncertainty; descriptions of intent do not.
+- If documentation for some behavior is missing, the most useful contribution is a real, working example of that behavior, with enough surrounding context (includes, type declarations) to verify it actually compiles and runs in the real environment, not just a fragment.
+- Do not paste hypothetical or "this is roughly how it would look" code as if it were confirmed working code. Mark it as unverified if you're not certain it runs.
+
+## Git and file handling
+
+`.simba` files are excluded from this repository (`.gitignore` contains `*.simba`). This is intentional: this repository documents how to write Lape scripts, it does not host them. Do not stage, commit, or otherwise add `.simba` files. If a `.simba` file is ever found staged, unstage it before committing.
+
+When contributing:
+- Keep changes scoped and explain why they are needed; avoid unrelated rewrites in the same change.
+- Do not push directly to `main` unless explicitly instructed to.
+- Commit messages and all repository content must be in English (see `CLAUDE.md`/`AGENTS.md`).
+
+## Current limitations
+
+Documented honestly rather than glossed over:
+
+- Coverage of `docs/` is uneven. Several areas relevant to real script-writing (pure Lape language semantics independent of any library call, build/compile error diagnostics, performance characteristics) have not been separately researched.
+- `docs/` was verified against one snapshot of installed SRL-T/WaspLib source and a set of real scripts examined during research; it is not continuously re-verified against upstream changes.
+- This repository contains no automated tests, linting, or CI for Lape code, and currently has no mechanism to verify that documented patterns still compile against the latest SRL-T/WaspLib release.
+- The previous version of this repository's premise (an LLM-calling host application for Lape scripts) is archived, not deleted, and could resurface as a separate, explicitly-scoped effort if ever revisited — it is not part of the current direction.
+
+## Contributing
+
+- Add documentation to `docs/` only when it is backed by a real script example or by direct inspection of SRL-T/WaspLib source. Do not add documentation for behavior you have not verified.
+- If you are correcting an existing `docs/` file, state what was wrong and what evidence supports the correction, the same way `docs/README.md`'s "key cross-cutting corrections" section does.
+- If you are adding a new topic file to `docs/`, add it to the index in `docs/README.md` and to the structure list in this file.
+- Keep `CLAUDE.md` and `AGENTS.md` in sync when adding repository-wide rules — they describe the same operating rules for different agents and should not diverge.
+- Do not commit `.simba` files (see "Git and file handling").
+
+## License
+
+No license file is currently present in this repository. Treat the content as all-rights-reserved by the repository owner until a license is added.
