@@ -25,6 +25,7 @@ This repository is a documentation and instruction layer that helps AI coding ag
 - `docs/items-bank.md` — `TRSItem`/`TRSItemArray`, bank loadouts, withdraw/deposit patterns
 - `docs/failsafes.md` — logging, termination, timeouts, chat-based failsafes, screenshots, webhooks
 - `docs/legacy-notes.md` — what was kept, rewritten, or archived from the previous version of this repository, and why
+- `docs/community/` — community-sourced notes (Discord, experienced script authors, informal answers). These are leads, not part of the primary documentation — see "Community notes" below before using anything from this folder.
 
 **Precedence rule:** if anything in `docs/` conflicts with external WaspLib documentation, or with general training knowledge about Pascal/Delphi, `docs/` wins. The files in `docs/` were built by directly inspecting this project's scripts and the actually-installed SRL-T/WaspLib source code, not recalled from memory.
 
@@ -63,6 +64,23 @@ Before writing or modifying any Lape/`.simba` content:
 - `archive/legacy/` contains the previous version of this repository's material, preserved unchanged. It is historical record, not current guidance. Do not cite it as if it describes this repository's current direction.
 - The old repository described a hypothetical Free Pascal/Delphi "Host API" (`Host.GetLLMInterface()`, `TLLMInterface.Generate`, etc.) that lets a Lape script call an LLM. **This was never implemented anywhere in this repository.** Never treat this, or any other hypothetical Host API example, as if it exists or is implemented unless the repository itself proves otherwise (actual source code, not a description). If asked about it, state plainly that it was a documented-as-hypothetical idea in the archived material, not a real API.
 - If old material in `archive/legacy/` contains a salvageable idea, it is already summarized in `docs/legacy-notes.md`. Reuse the idea from there (rewritten against current, verified information) rather than copying old code or prompts directly.
+
+## Community notes
+
+The repository may contain community sourced notes from Discord discussions or experienced script authors.
+
+These notes are useful leads, not authoritative documentation.
+
+Before using a community note for code generation:
+
+1. Check its confidence level.
+2. Check its source type.
+3. Check whether it is confirmed by local examples, local documentation, WaspLib source, or WaspLib documentation.
+4. Do not generate code from unverified notes.
+5. Do not infer function signatures, object ownership, imports, or behavior from short chat snippets.
+6. If a note is useful but unverified, mention it as an investigation lead and ask for a working example.
+
+See `docs/community/index.md` for the full policy, confidence-level and source-type definitions, and the intake template used for every note.
 
 ## Uncertainty handling
 
