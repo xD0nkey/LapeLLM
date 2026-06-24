@@ -48,6 +48,7 @@ docs/
   items-bank.md          - items, inventory, and bank handling
   failsafes.md           - logging, termination, timeouts, error handling
   legacy-notes.md        - what was kept, rewritten, or archived from the previous version of this repository
+  community/             - community-sourced notes (Discord, experienced script authors); leads, not verified documentation
 archive/
   legacy/                - old repository content, preserved unchanged, no longer treated as current guidance
 ```
@@ -100,6 +101,12 @@ This repository does not currently include runnable `.simba` example scripts. If
 - Provide a real script excerpt (a function, a record, an include chain) rather than a description of what you want the code to do. Concrete, real code is what resolves uncertainty; descriptions of intent do not.
 - If documentation for some behavior is missing, the most useful contribution is a real, working example of that behavior, with enough surrounding context (includes, type declarations) to verify it actually compiles and runs in the real environment, not just a fragment.
 - Do not paste hypothetical or "this is roughly how it would look" code as if it were confirmed working code. Mark it as unverified if you're not certain it runs.
+
+## Community notes
+
+This repository can also store informal knowledge from experienced script authors — Discord discussions, short chat snippets, and other informal community answers about Lape, Simba, SRL-T, or WaspLib.
+
+This information is tracked separately, under `docs/community/`, and is never treated as equivalent to the verified material in the rest of `docs/`. Every community note carries an explicit confidence level (Confirmed, Likely, Unverified, Contradictory, or Deprecated) and source type, records what is known and unknown about it, and states what would be needed to confirm it. A community note must be verified — against source code, a working example, local documentation, or official WaspLib documentation — before it is used to generate code. See `docs/community/index.md` for the full policy.
 
 ## Git and file handling
 
