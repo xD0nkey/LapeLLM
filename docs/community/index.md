@@ -52,7 +52,7 @@ Every note must be marked with one or more of these:
 | [gui.md](gui.md) | Notes about script GUIs, forms, controls, and on-client overlays. |
 | [minimap.md](minimap.md) | Notes about minimap behavior and minimap-related debugging/overlays. |
 | [debugging.md](debugging.md) | Notes about debugging techniques, debug overlays, and diagnostic helpers. |
-| [api-notes.md](api-notes.md) | Notes about specific symbols/functions/methods that don't fit the other topic files. |
+| [api-notes.md](api-notes.md) | Notes about specific symbols/functions/methods that don't fit the other topic files. Includes: `ArcTan2`/`TPoint.AngleBetween`; `TRSObjectV2`/`TRSNPCV2` `TrackTarget`, `SetupEx` forms, `Filter` array assignment, standalone usage pattern. |
 
 ## How an AI agent should use this folder
 

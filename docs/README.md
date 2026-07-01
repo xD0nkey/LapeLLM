@@ -9,6 +9,7 @@ This folder is a knowledge base for writing correct Lape code for OldSchool Rune
 | File | Topic |
 |---|---|
 | [map-walking.md](map-walking.md) | Positioning & movement: `Map`/`Objects`/`TRSMapChunk`/`TRSObjectV2`/`TRSNPCV2` (modern) vs `RSW: TRSWalker`/`TMSObject` (legacy), `WalkBlind`/`WalkClick`/`Minimap.WaitFlag` |
+| [map-debugging.md](map-debugging.md) | Workflow for finding/verifying a chunk box before using it: `Chunk()`, `Map.Debug()`, buffer chunks, reading a confirmed `Map.Position()` instead of guessing one |
 | [interfaces.md](interfaces.md) | Fixed UI elements: `GameTabs`, `Inventory`, `Equipment`, `Bank`, `DepositBox`, `Chat`/`ChatButtons`, `Login`/`Logout`, `Magic`, `Prayer`, `ChooseOption` |
 | [camera-minimap.md](camera-minimap.md) | Zoom (`MinZoom`/`MaxZoom`/`AdjustZoom`), rotation/compass angle, `MainScreen.IsVisible`, `PointToMSRect` |
 | [interact-mouse.md](interact-mouse.md) | The `Mouse` module, uptext verification before clicking, `ChooseOption`, object/NPC interaction (`.Click`/`.WalkClick`/`.WalkHover`) |
@@ -35,6 +36,8 @@ This folder is a knowledge base for writing correct Lape code for OldSchool Rune
 - **WaspLib's default antiban (camera/mouse/chat/gametabs/bank tasks) is active by default**, even in scripts that add no tasks of their own (see `wasplib.json`). To disable one, e.g. the chat task, you must explicitly override the method to a no-op — otherwise it still runs in the background.
 - **`TOCRColorFilter`/`TSimpleOCR` are defined in a compiled plugin** (`libsimpleocr`), not in readable Lape source — exact parameter orderings are inferred from how the library actually calls them in practice, not from a formal type declaration.
 - Script age does not guarantee a modern style — several recently edited scripts examined during this research still used the older `RSW: TRSWalker` style. Always check the actual code, not the filename or date.
+- **On plane > 0, `Map.Position()`/object coordinates are X-offset by `RSTranslator.MapWidth() * Plane` (13056 per plane)** relative to the plane-0-equivalent tile. Confirmed with live `Map.Position()` readings across 3 floors of Lumbridge Castle plus a cached-vs-live object coordinate comparison — see `map-walking.md` section 7. The raw cached object/NPC JSON stores the plane-0-equivalent coordinate; the live API does not.
+- **There are two unrelated, identically-named `WebWalk` methods.** `TRSWalker.WebWalk` (old style) pathfinds over a static, hand-curated `TWebGraph` (edited with the `WaspLib/tools/webber.simba` tool). `TRSWalkerV2.WebWalk` (`Map.Walker.WebWalk`, new style) pathfinds over a `TWebGraphV2` auto-generated per plane from collision data every time you `Map.SetupChunk(s)` — no tool/curation needed, inspect it with `Map.Debug(ERSMapType.NORMAL, True)` instead. Neither graph connects across planes (no stairs/ladders modeled) — see `map-walking.md` section 8 pitfall 9 for the practical fix (find the real staircase object, click it explicitly, wait for the plane to change).
 
 ## How to use these files
 

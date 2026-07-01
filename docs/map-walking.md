@@ -10,7 +10,9 @@ function signatures directly, not just reading script examples).
 
 See also `script-anatomy.md` for a high-level overview of the entire
 script architecture (state machines, TBaseScript, antiban, GUI). That file is not repeated here —
-this document goes deeper specifically on positioning/movement.
+this document goes deeper specifically on positioning/movement. See `map-debugging.md` for the
+practical workflow of finding/verifying a chunk box (`Chunk()`, `Map.Debug()`, buffer chunks)
+*before* wiring it into a script — this file assumes you already have a correct chunk box.
 
 **Important correction to the task description:** `Map`, `TRSMapChunk`, `Objects`, `TRSObjectV2`,
 `TRSNPCV2`, and `TRSWalkerV2` live in **SRL-T** (`SRL-T/osr/map/*.simba` and `SRL-T/osr/walker.simba`),
@@ -62,6 +64,15 @@ manual hover/click logic) or with WaspLib's older `TRSObject`/`TRSWalkerObjects`
 (`WaspLib/osr/walker/objects/walkerobjects.simba`) — yet another separate system, with its own
 `PRSWalkerObject` pointer.
 
+**The pathfinding underneath this old style is also a separate, older system: `TRSWalker.WebGraph: TWebGraph`**
+(confirmed field in `walker.simba`) — a STATIC, hand-curated graph (nodes + connections) loaded from a
+`.graph` file (WaspLib ships a default one, `WaspWeb`, at `WaspLib/osr/walker/waspweb.graph`) or built/edited
+with the **Webber** tool (`WaspLib/tools/webber.simba` — a standalone tool you run directly in Simba, not
+something you include in a script). If a path is missing from this graph, `TRSWalker.WebWalk` simply can't
+route through it until someone manually edits the graph and ships the change. This whole pipeline (`TRSWalker`,
+`TWebGraph`, `RSWalkerRegions`, the Webber/Map Maker tools) belongs to the OLD style in this section — it has
+nothing to do with `Map.Walker.WebWalk` (section 1b/5) even though both are confusingly called "WebWalk."
+
 ### 1b. New style: `Map` / `Objects` / `TRSMapChunk` / `TRSObjectV2`
 
 File: `SRL-T/osr/map/map.simba` + `SRL-T/osr/walker.simba` (the type `TRSWalkerV2`, global singleton
@@ -83,6 +94,16 @@ begin
   Self.BarDispenser.Walker := @Map.Walker;
 end;
 ```
+
+**This style's pathfinding (`TRSWalkerV2.WebWalk`, called `Map.Walker.WebWalk` or indirectly via
+`.WalkClick`/`.WalkHover` on an object/NPC) uses a separate, auto-generated `TWebGraphV2`** — built
+fresh from collision-bitmap data for whatever chunk(s) you `Map.SetupChunk(s)`, not a static hand-edited
+file. There is nothing to run/curate manually for this one (the Webber tool from section 1a does not
+apply here — it edits the OLD `TWebGraph` format). To inspect what this auto-generated graph actually
+covers for a given chunk setup, use `Map.Debug(ERSMapType.NORMAL, True)` (the `graph` parameter) — see
+`map-debugging.md`. This graph is built **per plane** from each plane's own collision data; it has no
+concept of stairs/ladders connecting planes (see the pitfall on this below), which is why `WebWalk` alone
+can never path between planes no matter how good the graph for each individual plane is.
 
 **Conclusion: in NEW scripts you should always use `Map`/`Objects`/`NPCs`/`TRSObjectV2`/`TRSNPCV2`,
 never your own `RSW: TRSWalker` instance or `TMSObject`.** The new style gives you real
@@ -485,6 +506,34 @@ if not SRL.PointInPoly(Map.Position(), Self.BankBounds) then ...
 not hardcoded boxes scattered throughout the logic — this makes it much easier to adjust boundaries later
 without searching through the entire file.
 
+### Coordinates on plane > 0 are offset on the X axis — confirmed, not a guess
+
+This one is easy to get wrong because nothing about it is documented in the API itself, and it doesn't
+show up at all if everything you do stays on plane 0 (ground floor).
+
+**For any position/object coordinate on a plane greater than 0, the X value reported by
+`Map.Position()` (and returned in `TRSObjectV2`/`TRSNPCV2.Coordinates` once you're set up on that
+plane) is the plane-0-equivalent X plus `RSTranslator.MapWidth() * Plane`.**
+
+`RSTranslator.MapWidth()` (`SRL-T/utils/math/translator.simba`) is `RSWidth() * Map.ChunkSide` =
+`51 chunks * 256` = **13056** for the live OSRS map as currently configured. Confirmed two independent
+ways in the same investigation:
+- Real `Map.Position()` readings from a live client at the bottom, middle, and top floor of the same
+  staircase in Lumbridge Castle: `[8724,37598]` (plane 0) → `[21780,37598]` (plane 1) →
+  `[34840,37594]` (plane 2). `21780-8724 = 13056` exactly; `34840-21780 = 13060` (off by a few tiles
+  only because the stair landing isn't pixel-identical between floors, not a measurement error).
+- The raw cached object JSON (`osr/map/files/objects.zip`) stores a Lumbridge Castle "Bank booth" on
+  plane 2 at `[8736,37546]` — the plane-0-equivalent X. Read live via `Objects.GetAll('Bank booth')`
+  while set up on `ERSChunk.LUMBRIDGE` (which includes plane 2), the SAME booth's `Coordinates` come
+  back around `[34848,37546]`. `34848-8736 = 26112 = 2*13056`, exactly matching `Plane = 2`.
+
+**Practical consequence:** if you build a `TBox`/coordinate constant by reading the raw cached
+object/NPC JSON directly (see `map-debugging.md`) for something on plane > 0, you must add
+`MapWidth() * Plane` to the X bounds yourself — the raw cache file and the live
+`Map.Position()`/`Objects.GetAll()`/`NPCs.GetAll()` API are NOT in the same coordinate space for
+plane > 0. Sticking to plane 0 the whole script never surfaces this; it only bites the moment any
+part of the script (a bank on an upper floor, a dungeon, an upstairs room) involves a different plane.
+
 ---
 
 ## 8. Common pitfalls
@@ -544,9 +593,25 @@ without searching through the entire file.
    between the files). **Always verify against `mapobject.simba`, not `objects.simba`, when citing
    `TRSObjectV2`/`TRSMapObject` fields.**
 
+9. **`WebWalk`/`WalkClick`/`WalkHover` cannot cross planes, even when both ends are "loaded."**
+   Confirmed directly from `SRL-T/osr/map/maploader.simba`: the webgraph (`TWebGraphV2`) is built
+   per `(chunk, plane)` region from that region's own collision bitmap (`TRSMapLoader.SetupGraph`),
+   and `InternalGraphLoad` just pools every loaded region's nodes/edges together
+   (`Result.Merge(graphs[i])`) — it never synthesizes a NEW edge between two different planes' graphs.
+   Staircases/ladders are not modeled as graph connections at all. Practical effect: if your
+   destination is on a different plane than the player's current plane, `WebWalk`/`WalkClick` will
+   report "no path"/fail, regardless of how complete the chunk setup looks, because the two
+   planes are disconnected components in the merged graph. You must find the real "Staircase" (or
+   "Ladder"/`"Trapdoor"`, etc.) object via `Objects.GetAll`/`Objects.Get` for the CURRENT plane,
+   `.WalkSelectOption(['Climb-up'])`/`['Climb-down']` it explicitly, wait for
+   `Map.FullPosition().Plane` to actually change, then continue walking/pathing on the new plane —
+   one climb per plane crossed. See `map-debugging.md` and the real example in this project's
+   `scripts/goblin_killer.simba` (`ClimbStairs`/`FindStaircase`), which had to do exactly this for a
+   bank on a different floor than its training area.
+
 ---
 
-## 9. Checklist for walking code in a new script
+## 10. Checklist for walking code in a new script
 
 1. Include `{$I SRL-T/osr.simba}` (and `{$I WaspLib/osr.simba}` if you need extra WaspLib functions).
 2. `Map.SetupChunk(ERSChunk.XXX)` or `Map.SetupChunkEx(box, planes)` — do this ONCE, early
