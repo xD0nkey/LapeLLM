@@ -108,7 +108,7 @@ py -m pip install "mcp[cli]"
 py scripts/mcp_lape_libs_server.py
 ```
 
-**Claude Code project config** (already present in `.claude/settings.local.json`):
+**Claude Code project config** (`.claude/settings.local.json` — local only, not committed, may not exist in every clone; create it if absent):
 
 ```json
 {
