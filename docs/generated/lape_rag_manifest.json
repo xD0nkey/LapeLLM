@@ -1,0 +1,31 @@
+{
+  "rag_built": true,
+  "backend": "chromadb",
+  "embedding_model": "all-MiniLM-L6-v2",
+  "embedding_dimensions": 384,
+  "collection_name": "lape_libs",
+  "chunk_count": 8895,
+  "symbol_doc_count": 8623,
+  "chunk_type_breakdown": {
+    "symbol_doc": 7110,
+    "record_doc": 251,
+    "field_doc": 1261,
+    "repository_doc": 234,
+    "policy_doc": 39
+  },
+  "source_roots": [
+    "SRL-T",
+    "WaspLib",
+    "Farm",
+    "repo_docs"
+  ],
+  "created_at": "2026-07-02T08:49:03.874673+00:00",
+  "index_path": ".cache/lape_rag/",
+  "notes": [
+    "Embedding model: all-MiniLM-L6-v2 (384-dim, sentence-transformers)",
+    "Vector store: ChromaDB (local persistent, gitignored at .cache/lape_rag/)",
+    "RAG results are finding aids — verify all claims against source files.",
+    "Lape built-ins (StrToInt, WriteLn, etc.) are not in the scanned library index and will not appear in RAG results.",
+    "Rebuild after any library update: py scripts/build_lape_lib_docs.py && py scripts/build_lape_rag.py"
+  ]
+}

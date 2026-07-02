@@ -1,6 +1,8 @@
 # Lape Library Retrieval — Fallback Command Reference
 
-`scripts/search_lape_libs.py` is the **primary retrieval fallback** for querying the symbol index until the MCP server is implemented. This document describes what it does, how to use it, its scoring method, its limitations, and example outputs.
+`scripts/search_lape_libs.py` is the **keyword/fuzzy retrieval fallback** for exact symbol, type, field, and constant lookups when the MCP `search_lape_libs` tool is unavailable. This document describes what it does, how to use it, its scoring method, its limitations, and example outputs.
+
+For semantic/conceptual queries, use `search_lape_rag` instead (see `docs/generated/lape_rag.md`).
 
 ---
 
@@ -107,7 +109,7 @@ This script does **not** use:
 
 It is a fast, deterministic keyword search with basic fuzzy name matching. For semantic queries ("find a function that does X conceptually"), it will match only if the concept appears literally in the name, signature, summary, or snippet fields. Many of the auto-generated summaries are brief (e.g. `"Field of TRSBank. Type: TRSItemInterface."`) so semantic precision is limited.
 
-**MCP status**: the `search_lape_libs` MCP tool described in CLAUDE.md is not yet configured. Once it is, it will use the same JSONL as its source and return results in the same format, but with better semantic ranking via embeddings. Until then, this script is the required fallback.
+**MCP status**: the `search_lape_libs` and `search_lape_rag` MCP tools are implemented in `scripts/mcp_lape_libs_server.py` and registered in `.claude/settings.local.json`. Use this script as the fallback when those tools are not active in the current session. For semantic search, the fallback is `scripts/search_lape_rag.py`.
 
 ---
 

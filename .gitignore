@@ -1,2 +1,5 @@
 *.simba
-/scripts/
+.cache/
+.generated/
+__pycache__/
+*.pyc

@@ -32,16 +32,21 @@ This repository is a documentation and instruction layer that helps Claude (and 
 
 ## Mandatory libs symbol index, RAG, and MCP retrieval
 
-**Current status: symbol index, local retrieval script, and MCP server are implemented. RAG database (vector embeddings) is not yet built.**
+**Current status: symbol index, enriched symbol docs, local retrieval scripts, RAG vector database, and MCP server are all implemented.**
 
 - `docs/generated/lape_lib_symbol_index.jsonl` — **exists** (8623 entries, 243 source files scanned).
 - `docs/generated/lape_lib_symbol_index.md` — **exists** (human-readable overview).
-- `scripts/search_lape_libs.py` — **exists** (keyword/fuzzy retrieval script; see "Retrieval fallback script" below).
-- `scripts/mcp_lape_libs_server.py` — **exists** (MCP server wrapping the retrieval script; registered in `.claude/settings.local.json`).
-- MCP tool name: `search_lape_libs` — **configured** in `.claude/settings.local.json` for this project.
-- RAG database (vector embeddings) — **not yet built**.
+- `docs/generated/lape_lib_symbol_docs.jsonl` — **exists** (8623 enriched entries with container, source_root, return_type, parameter metadata).
+- `docs/generated/lape_rag_manifest.json` — **exists** (RAG build metadata).
+- `scripts/search_lape_libs.py` — **exists** (keyword/fuzzy retrieval; no external dependencies).
+- `scripts/search_lape_rag.py` — **exists** (semantic RAG retrieval; requires chromadb + sentence-transformers).
+- `scripts/build_lape_lib_docs.py` — **exists** (generates symbol docs JSONL from the symbol index).
+- `scripts/build_lape_rag.py` — **exists** (builds ChromaDB vector index from symbol docs and repo docs).
+- `scripts/mcp_lape_libs_server.py` — **exists** (MCP server; registered in `.claude/settings.local.json`).
+- MCP tools: `search_lape_libs`, `search_lape_rag`, `lape_index_status` — **configured**.
+- Local semantic RAG index backed by ChromaDB (`all-MiniLM-L6-v2`, 8895 chunks) — **built** at `.cache/lape_rag/` (gitignored, must be built locally).
 
-**Claude must call `search_lape_libs` before answering any Lape/SRL-T/WaspLib/Farm question.** If the MCP tool is available in the working environment, use it directly. If it is unavailable, use the fallback script. See "Retrieval fallback script" for the exact fallback commands.
+**Claude must call a retrieval tool before answering any Lape/SRL-T/WaspLib/Farm question.** Use `search_lape_libs` for exact symbol lookups. Use `search_lape_rag` for conceptual or broad natural-language queries. Use both for important code-generation tasks. See "Required retrieval workflow" for the full decision rule.
 
 ### Library source location
 
@@ -116,36 +121,35 @@ Each line must use this exact JSON shape:
 }
 ```
 
-### Required RAG database
+### Required local semantic RAG index
 
-Once `lape_lib_symbol_index.jsonl` exists, it must be converted into a local retrieval index (RAG database). The retrieval index must:
+Once `lape_lib_symbol_index.jsonl` exists, it must be converted into a local semantic RAG index backed by ChromaDB. The retrieval index must:
 
 - Be built only from the generated JSONL file, not from model memory or training data.
 - Return results that include: symbol name, kind, summary, file path, line or nearest location, signature if available, source snippet if available, and confidence value.
 - Support natural language queries and direct symbol name lookups.
 
-**The RAG database does not currently exist.** It must be created as part of initial setup. See "RAG database maintenance" for update requirements.
+**The local semantic RAG index exists** (ChromaDB at `.cache/lape_rag/`, 8895 chunks, `all-MiniLM-L6-v2` embeddings). It is gitignored and must be built locally by running `py scripts/build_lape_lib_docs.py && py scripts/build_lape_rag.py`. See "RAG index maintenance" for update requirements.
 
 ### MCP retrieval tool
 
-If MCP is available in the working environment, an MCP server must expose the RAG database through a tool named:
+The MCP server (`scripts/mcp_lape_libs_server.py`) exposes three tools:
+
+- **`search_lape_libs`** — keyword/fuzzy search over the symbol index. Best for exact symbol names and type lookups.
+- **`search_lape_rag`** — semantic vector search over symbol docs and repository documentation. Best for conceptual or natural-language queries.
+- **`lape_index_status`** — diagnostic tool reporting all index load states and chunk counts.
+
+Example calls:
 
 ```
-search_lape_libs
+search_lape_libs("TRSObjectV2", kind="field")
+search_lape_libs("TBaseScript", limit=10)
+search_lape_rag("how do I withdraw items from the bank", limit=8)
+search_lape_rag("which API handles walking to map objects", limit=8)
+lape_index_status()
 ```
 
-The tool must accept natural language queries and symbol name queries. Examples:
-
-```
-search_lape_libs("file handling functions")
-search_lape_libs("string split")
-search_lape_libs("TRSObjectV2 methods")
-search_lape_libs("where is Map declared")
-search_lape_libs("Bank withdraw")
-search_lape_libs("function that converts text to integer")
-```
-
-**The MCP server is not currently configured.** It must be set up as part of initial setup. See "MCP retrieval contract" for required behavior and result format.
+The MCP server is registered in `.claude/settings.local.json`. See "MCP retrieval contract" for required behavior and result format.
 
 ### Retrieval fallback script
 
@@ -200,36 +204,55 @@ Direct inspection is slower than retrieval but equally mandatory. Do not substit
 Before answering any question about Lape syntax, library functions, SRL-T, WaspLib, Simba, types, includes, constants, methods, behavior, or code generation, follow this exact order:
 
 1. **Understand the request.** Identify every symbol, type, function, or behavior the answer depends on.
-2. **Query the retrieval tool.** If the MCP `search_lape_libs` tool is available in the working environment, call it directly — it is the primary retrieval path. If it is unavailable, run `py scripts/search_lape_libs.py "<query>" --limit 10` for general lookups, or `py scripts/search_lape_libs.py "<name>" --kind field --limit 20` when looking for record fields. Use multiple targeted queries if the question touches several symbols.
+2. **Query the retrieval tool.** Choose based on query type:
+   - **Exact symbol, type, field, method, constant, or enum name** → use `search_lape_libs` (MCP tool if active, else `py scripts/search_lape_libs.py "<query>" --limit 10`). For record fields specifically: `kind="field"` or `--kind field`.
+   - **Conceptual, broad, or natural-language query** ("how do I check uptext", "walking to objects API", "bank withdraw pattern") → use `search_lape_rag` (MCP tool if active, else `py scripts/search_lape_rag.py "<query>" --limit 8`).
+   - **Important code generation** → use both tools and cross-reference results.
+   - Use multiple targeted queries if the question touches several symbols.
 3. **Inspect source files when needed.** If retrieval returns no result, an unclear result, or the answer depends on exact behavior, side effects, parameter order, or return type, read the actual source file in `%LOCALAPPDATA%\Simba\Includes\` directly.
 4. **Check `docs/`.** Compare the retrieved or inspected information against the relevant `docs/*.md` file. `docs/` takes precedence over secondary sources. If direct source inspection reveals a discrepancy with `docs/`, flag the conflict explicitly.
 5. **Answer only from verified information.** Do not mix verified facts with assumed facts. If part of an answer is verified and part is not, label each part separately.
 6. **Cite file paths and locations.** Every claim about a symbol's name, signature, ownership, or behavior must cite the exact file path and line number or nearest location.
 7. **State uncertainty explicitly.** If steps 1–6 do not produce a verified answer for any part of the question, say **"I am not sure based on the available documentation"** and state what would resolve the gap.
 
-### Query strategy for the fallback script
+### Query strategy
 
-The fallback script (`scripts/search_lape_libs.py`) is **keyword/fuzzy based, not semantic embedding search.** A broad natural language query ("function that converts text to integer") will only match if those words appear literally in a symbol's name, signature, or summary. When a broad query gives weak or off-topic results, retry with progressively more specific terms:
+**Keyword/fuzzy (`search_lape_libs`):**
 
-- Use exact or likely symbol names, type names, or field names instead of descriptions.
-- Use `--kind field` when looking for record fields — broad queries surface method results first.
-- If you suspect a function name, query it directly.
+The script is keyword-based, not semantic. A broad query ("function that converts text to integer") matches only if those words appear literally in the index. When results are weak, retry with specific terms:
 
-Examples of targeted retries that produce better results than broad queries:
+- Use exact or likely symbol names: `"TRSBank.Withdraw"`, `"TRSObjectV2"`.
+- Use `--kind field` for record fields — broad queries surface method results first.
+- If you suspect a function name, query it directly: `"StrToInt"`, `"IsUpText"`.
 
 ```
 py scripts/search_lape_libs.py "StrToInt" --limit 10
-py scripts/search_lape_libs.py "UpText" --limit 10
 py scripts/search_lape_libs.py "IsUpText" --limit 10
 py scripts/search_lape_libs.py "TRSObjectV2" --kind field --limit 20
 ```
 
-Two rules that must not be broken:
+**Semantic (`search_lape_rag`):**
 
-- **Weak retrieval results are not evidence of absence.** If the script returns nothing useful for a query, that means the query was not phrased in terms the index contains — not that the symbol does not exist. Inspect the returned `file_path` values, then read the source directly.
-- **Do not answer from a weak result without source verification.** If a result looks plausible but its summary is generic (`"Returns Boolean"`, `"Procedure X.Y"`), open the cited source file before claiming the symbol does what the result implies.
+The RAG script uses embeddings and handles natural-language queries well. Use it for conceptual or broad queries, but follow these rules:
 
-**Never skip this workflow because a question looks simple.** The most damaging hallucinations in this project have occurred on single-function, "obvious" tasks.
+- **Scores below 0.65 are weakly related.** Read the actual chunk text before treating the result as relevant.
+- **Empty or weak RAG results do not prove absence.** The symbol may still exist in the source. Fall back to `search_lape_libs` with a specific name, or inspect the source directly.
+- **RAG results are finding aids, not authority.** Source inspection always wins.
+
+```
+py scripts/search_lape_rag.py "how do I withdraw items from the bank" --limit 8
+py scripts/search_lape_rag.py "walking to map objects API" --limit 8
+py scripts/search_lape_rag.py "bank withdraw" --chunk-type symbol_doc --limit 8
+```
+
+**When to use each:**
+
+1. Exact symbol name or type known → `search_lape_libs` first.
+2. Conceptual or uncertain query → `search_lape_rag` first, then confirm with `search_lape_libs`.
+3. Important code generation → use both; cross-reference results.
+4. Lape built-ins (`StrToInt`, `WriteLn`, `Length`) → neither tool has them; consult Lape language documentation directly.
+
+**Never skip retrieval because a question looks simple.** The most damaging hallucinations in this project have occurred on single-function, "obvious" tasks.
 
 ## Required workflow before writing code
 
@@ -327,13 +350,13 @@ See `docs/community/index.md` for the full policy, confidence-level and source-t
 - Avoid rewriting this repository randomly after the initial cleanup pass. Once a structure is established, treat changing it as a deliberate, justified decision, not routine churn.
 - Keep future changes small, and explain why each change is needed. A short, accurate explanation of "why" is required for any non-trivial change to this repository.
 
-## RAG database maintenance
+## RAG index maintenance
 
-The generated files `docs/generated/lape_lib_symbol_index.md`, `docs/generated/lape_lib_symbol_index.jsonl`, and `docs/generated/lape_lib_scan_report.md` are derived from a point-in-time scan of the installed libraries. They become stale when:
+The generated files `docs/generated/lape_lib_symbol_index.jsonl`, `docs/generated/lape_lib_symbol_docs.jsonl`, and the ChromaDB index at `.cache/lape_rag/` are all derived from a point-in-time scan of the installed libraries. They become stale when:
 
 - Any file under `%LOCALAPPDATA%\Simba\Includes\` changes (library update, patch, new file added or removed).
-- The git commit hash of this repository recorded in the scan report no longer matches `HEAD`.
-- A contributor discovers that an entry in the index has an incorrect signature, incorrect file attribution, or missing required field.
+- The git commit hash recorded in `lape_lib_scan_report.md` no longer matches `HEAD`.
+- A contributor discovers an incorrect signature, incorrect file attribution, or missing field in the index.
 
 When the index is known or suspected to be stale:
 
@@ -342,11 +365,18 @@ When the index is known or suspected to be stale:
 3. Flag the stale entry in the answer and request a rescan.
 4. Do not rely on a stale index entry as authoritative.
 
-The RAG database must be rebuilt from the JSONL file whenever the JSONL file is regenerated. The RAG database and the JSONL file must stay in sync; a RAG database built from an older JSONL version is equally stale.
+**Full rebuild sequence (after a library update or rescan):**
+
+```
+py scripts/build_lape_lib_docs.py
+py scripts/build_lape_rag.py
+```
+
+Both must be re-run together. A local semantic RAG index built from an older symbol docs version is equally stale. The symbol index JSONL (`lape_lib_symbol_index.jsonl`) is upstream of both and must be regenerated first if the scan itself changes.
 
 ## MCP retrieval contract
 
-This section defines the required behavior of the `search_lape_libs` MCP tool. **The tool is implemented** (`scripts/mcp_lape_libs_server.py`, registered in `.claude/settings.local.json`). It uses keyword + `difflib` fuzzy matching over the JSONL index — not vector embeddings. See `docs/generated/lape_lib_mcp.md` for full documentation, input/output schema, example calls, and troubleshooting.
+This section defines the required behavior of the MCP tools. **All three tools are implemented** (`scripts/mcp_lape_libs_server.py`, registered in `.claude/settings.local.json`). See `docs/generated/lape_lib_mcp.md` for full documentation, input/output schema, example calls, and troubleshooting. See `docs/generated/lape_rag.md` for RAG-specific documentation.
 
 ### Required tool behavior
 
@@ -383,14 +413,15 @@ When `search_lape_libs` returns an entry with confidence `partial` or `unclear`,
 
 ### Fallback when MCP is unavailable
 
-Until the MCP server is running, use `scripts/search_lape_libs.py` as the primary retrieval step:
+Use the fallback scripts when the MCP tools are not active:
 
 ```
 py scripts/search_lape_libs.py "<query>" --limit 10
 py scripts/search_lape_libs.py "<symbol>" --kind field --limit 20
+py scripts/search_lape_rag.py "<query>" --limit 8
 ```
 
-If the script is also unavailable, fall back to direct source inspection at:
+If the scripts are also unavailable, fall back to direct source inspection at:
 
 ```
 %LOCALAPPDATA%\Simba\Includes\SRL-T\
@@ -418,6 +449,8 @@ Do not introduce non-English content into repository files.
 - "The old repository described a `Host.GetLLMInterface()` API, but that was explicitly marked hypothetical and was never implemented — I won't treat it as real."
 - "I queried `search_lape_libs('Bank withdraw')` and found `TRSBank.WithdrawItem` at `WaspLib/utils/bank.simba:247` with confidence `confirmed`. Signature from source: ..."
 - "`search_lape_libs` returned no result for this query, so I read `%LOCALAPPDATA%\Simba\Includes\SRL-T\interfaces\minimap.simba` directly. `Minimap.GetPosition` is at line 312 — confirmed from source."
+- "I ran `search_lape_rag('how do I walk to a bank object')` and the top result was `docs/map-walking.md > 5. Movement functions` with score 0.81 — pointing me to `WalkClick` and `WalkHover` on `TRSObjectV2`. I verified the signatures with `search_lape_libs('TRSObjectV2.WalkClick')` before using them."
+- "`search_lape_rag` returned weakly related results (scores 0.55–0.60). This is inconclusive — I'll retry with `search_lape_libs` using a specific symbol name before drawing any conclusions."
 
 ## Examples of disallowed behavior
 
@@ -430,16 +463,19 @@ Do not introduce non-English content into repository files.
 - Treating anything in `archive/legacy/` (including the hypothetical Host API) as if it is implemented, current, or part of this repository's direction.
 - Writing a production Lape script when only documentation work was requested.
 - Creating, modifying, staging, or committing `.simba` files.
-- Answering a question about a Lape function or type from memory without first querying `search_lape_libs` or inspecting the source file at `%LOCALAPPDATA%\Simba\Includes\`.
+- Answering a question about a Lape function or type from memory without first querying retrieval tools or inspecting the source file at `%LOCALAPPDATA%\Simba\Includes\`.
 - Treating a `search_lape_libs` result with confidence `partial` or `unclear` as a confirmed fact without verifying against the source file.
-- Claiming that `search_lape_libs` returned a result when the tool was not actually queried.
+- Claiming that `search_lape_libs` or `search_lape_rag` returned a result when the tool was not actually queried.
+- Treating weak or empty RAG results (scores below 0.65, or empty results for a Lape built-in) as proof that a symbol does not exist.
+- Using `search_lape_rag` results as authority without verifying against source files — RAG results are finding aids only.
 - Treating the installed library path `%LOCALAPPDATA%\Simba\Includes\` as a "libs/" directory inside this repository — the repository has no such folder.
 
 ## Final checklist before answering
 
 Before sending any response that includes Lape code or claims about how Lape/SRL-T/WaspLib behaves, confirm:
 
-- [ ] Have I queried `search_lape_libs` (if available) or inspected the relevant source files at `%LOCALAPPDATA%\Simba\Includes\` directly?
+- [ ] Have I queried `search_lape_libs` for exact symbol lookups, and `search_lape_rag` for conceptual or broad queries (or the fallback scripts if MCP is unavailable)?
+- [ ] For RAG results, have I verified findings against source files rather than treating them as authoritative?
 - [ ] Have I cited exact file paths and line numbers for every symbol or behavior claim?
 - [ ] Did I note the confidence level of every retrieved or inspected result, and verify `partial`/`unclear` entries against source?
 - [ ] Have I read `docs/README.md` and the relevant topic file(s) for this task?

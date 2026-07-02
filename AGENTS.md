@@ -26,6 +26,7 @@ This repository is a documentation and instruction layer that helps AI coding ag
 - `docs/failsafes.md` — logging, termination, timeouts, chat-based failsafes, screenshots, webhooks
 - `docs/legacy-notes.md` — what was kept, rewritten, or archived from the previous version of this repository, and why
 - `docs/community/` — community-sourced notes (Discord, experienced script authors, informal answers). These are leads, not part of the primary documentation — see "Community notes" below before using anything from this folder.
+- `docs/generated/` — machine-generated symbol index, enriched symbol docs, RAG manifest, and scan report. See "Required retrieval workflow" below. Query via `search_lape_libs` (keyword/fuzzy) and `search_lape_rag` (semantic vector) before answering any Lape/SRL-T/WaspLib question.
 
 **Precedence rule:** if anything in `docs/` conflicts with external WaspLib documentation, or with general training knowledge about Pascal/Delphi, `docs/` wins. The files in `docs/` were built by directly inspecting this project's scripts and the actually-installed SRL-T/WaspLib source code, not recalled from memory.
 
@@ -38,12 +39,30 @@ This repository is a documentation and instruction layer that helps AI coding ag
 - Mark uncertainty explicitly instead of turning an assumption into a fact. Update `docs/known-gaps.md` when a repeated uncertainty blocks reliable script generation.
 - Community notes are leads, not proof. They may guide further investigation, but they do not replace source documentation or a working example.
 
+## Required retrieval workflow
+
+Before answering any question about a Lape/SRL-T/WaspLib symbol, type, function, or behavior:
+
+1. **Exact symbol/type/field/constant lookup** → use `search_lape_libs`:
+   ```
+   py scripts/search_lape_libs.py "<symbol>" --limit 10
+   py scripts/search_lape_libs.py "<record>" --kind field --limit 20
+   ```
+2. **Conceptual or natural-language query** → use `search_lape_rag`:
+   ```
+   py scripts/search_lape_rag.py "<query>" --limit 8
+   ```
+3. **Verify against source.** Use `file_path` and line number from results to inspect `%LOCALAPPDATA%\Simba\Includes\` directly for exact signatures and behavior.
+4. **RAG results are finding aids, not authority.** Source inspection wins. Weak or empty results (especially for Lape built-ins like `StrToInt`) are inconclusive — not proof of absence.
+
+If MCP tools are available (`search_lape_libs`, `search_lape_rag`, `lape_index_status`), use them directly instead of the fallback scripts.
+
 ## Required workflow before writing code
 
 Before writing or modifying any Lape/`.simba` content:
 
-1. Read `docs/README.md` to identify which topic file(s) are relevant.
-2. Read those specific `docs/*.md` files in full. Do not skip this because the task looks simple — small, "obvious" actions (a single click, a single uptext check) have been the source of real, hard-to-diagnose bugs in this project's history precisely because an assumption wasn't re-verified first.
+1. Follow the retrieval workflow above for every symbol, API, type, or behavior the planned code will use.
+2. Read `docs/README.md` to identify which topic file(s) are relevant, then read those files in full.
 3. If the task touches an area not covered by any file in `docs/`, say so explicitly and treat that area as uncertain (see Uncertainty handling) rather than improvising.
 4. Compare the planned code against patterns already established in `docs/` before proposing anything non-trivial or structurally new. Reuse an existing documented pattern instead of inventing a new one.
 5. Only after steps 1–4 should code be written or edited.

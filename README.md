@@ -14,7 +14,7 @@ In scope:
 - Documentation of Lape language behavior as actually observed in SRL-T/WaspLib source code and real scripts.
 - Documentation of SRL-T/WaspLib API usage patterns: interfaces, walking/mapping, antiban, GUI/config, OCR/color detection, items/bank, failsafes.
 - Operating instructions for AI coding agents working in this repository or using it as a reference (`CLAUDE.md`, `AGENTS.md`).
-- A generated symbol index of the installed SRL-T, WaspLib, and Farm libraries, with an MCP server and fallback search script for retrieval.
+- A generated symbol index, enriched symbol docs, and local semantic RAG index backed by ChromaDB of the installed SRL-T, WaspLib, and Farm libraries, with MCP tools and fallback scripts for both keyword and semantic retrieval.
 - A clear process for what to do when documentation is missing or uncertain.
 
 Out of scope:
@@ -44,7 +44,10 @@ AGENTS.md               — the same operating rules, written for other AI codin
 .gitignore              — excludes *.simba files from version control
 scripts/
   search_lape_libs.py   — keyword/fuzzy search over the symbol index (fallback retrieval)
-  mcp_lape_libs_server.py — MCP server exposing search_lape_libs tool (requires mcp[cli])
+  search_lape_rag.py    — semantic RAG search over symbol docs and repo docs (fallback retrieval)
+  build_lape_lib_docs.py — generates lape_lib_symbol_docs.jsonl from the symbol index
+  build_lape_rag.py     — builds the ChromaDB vector index from symbol docs and repo docs
+  mcp_lape_libs_server.py — MCP server exposing search_lape_libs, search_lape_rag, lape_index_status
 docs/
   README.md             — index of the docs/ folder
   script-anatomy.md     — high-level overview of Lape/WaspLib script structure
@@ -69,16 +72,20 @@ docs/
   generated/
     lape_lib_symbol_index.jsonl — machine-readable symbol index (8623 entries)
     lape_lib_symbol_index.md   — human-readable symbol index overview
+    lape_lib_symbol_docs.jsonl — enriched symbol docs (container, return_type, parameters)
+    lape_lib_symbol_docs.md   — human-readable symbol docs overview
     lape_lib_scan_report.md    — scan metadata, coverage report, and known gaps
-    lape_lib_retrieval.md      — fallback search script documentation and examples
+    lape_lib_retrieval.md      — keyword search script documentation and examples
     lape_lib_mcp.md            — MCP server documentation, schema, and examples
+    lape_rag.md                — RAG system documentation, build commands, and usage
+    lape_rag_manifest.json     — RAG build metadata (chunk count, model, timestamp)
 archive/
   legacy/               — old repository content, preserved unchanged, not current guidance
 ```
 
 ## Lape library retrieval
 
-The repository includes a symbol index of the installed SRL-T, WaspLib, and Farm libraries and two retrieval interfaces over it. Both are required anti-hallucination infrastructure: an AI agent must retrieve before it answers any question about a Lape symbol, type, or function.
+The repository includes a symbol index of the installed SRL-T, WaspLib, and Farm libraries, enriched symbol docs derived from it, a local semantic vector database (ChromaDB), and retrieval interfaces over all of these. Retrieval is required anti-hallucination infrastructure: an AI agent must retrieve before answering any question about a Lape symbol, type, or function.
 
 ### Symbol index
 
@@ -136,11 +143,13 @@ py scripts/mcp_lape_libs_server.py
 
 **Important:** The `search_lape_libs` tool only appears in the active tool list if the MCP server was loaded when the Claude session started. After adding or changing MCP configuration, start a new session or restart Claude Code before expecting the tool to be available. If the tool is absent, use the fallback script instead.
 
+The MCP server exposes three tools: `search_lape_libs` (keyword/fuzzy), `search_lape_rag` (semantic), and `lape_index_status` (diagnostics).
+
 See `docs/generated/lape_lib_mcp.md` for the full input/output schema, example calls, and troubleshooting.
 
-### Fallback search script
+### Keyword fallback (`search_lape_libs`)
 
-`scripts/search_lape_libs.py` is a zero-external-dependency Python script providing the same search capability without an MCP client. Use it whenever the MCP tool is unavailable.
+`scripts/search_lape_libs.py` is a zero-external-dependency Python script for exact and fuzzy symbol lookups. Use it whenever the MCP tool is unavailable.
 
 **General query:**
 
@@ -164,6 +173,36 @@ Valid `--kind` values: `field`, `method`, `function`, `procedure`, `record`, `co
 
 See `docs/generated/lape_lib_retrieval.md` for scoring details, query strategy, and example outputs.
 
+### Semantic RAG fallback (`search_lape_rag`)
+
+`scripts/search_lape_rag.py` provides semantic vector search over symbol docs and repository documentation. Use it for conceptual and natural-language queries that don't have a known symbol name.
+
+**Dependency:** requires `chromadb` and `sentence-transformers`. Build the index first:
+
+```
+py scripts/build_lape_lib_docs.py
+py scripts/build_lape_rag.py
+```
+
+**Usage:**
+
+```
+py scripts/search_lape_rag.py "how do I withdraw items from the bank" --limit 8
+py scripts/search_lape_rag.py "which API handles walking to map objects" --limit 8
+py scripts/search_lape_rag.py "bank withdraw" --json --limit 8
+```
+
+The vector index is stored at `.cache/lape_rag/` (gitignored). Every developer must build it locally. See `docs/generated/lape_rag.md` for full documentation.
+
+### When to use each
+
+| Query type | Tool |
+|------------|------|
+| Exact symbol name, type, or field | `search_lape_libs` first |
+| Broad, conceptual, or natural-language | `search_lape_rag` first |
+| Important code generation | Both; cross-reference |
+| Lape built-ins (`StrToInt`, `WriteLn`, etc.) | Neither — defined in Lape interpreter, not in the library index |
+
 ### Record field inheritance: TRSObjectV2
 
 `TRSObjectV2 = record(TRSMapObject)`. It declares only two fields directly:
@@ -186,7 +225,7 @@ The same applies to `TRSNPCV2 = record(TRSMapObject)`, which adds only `Level`, 
 An AI agent working on a Lape/Simba/WaspLib task in or with this repository should:
 
 1. Read `CLAUDE.md` (if running as Claude) or `AGENTS.md` (otherwise) before writing or modifying any script.
-2. **Retrieve before answering.** Call `search_lape_libs` (MCP tool if active, fallback script otherwise) for every symbol, type, or function the answer will depend on. Do not answer from memory.
+2. **Retrieve before answering.** For exact symbol/type/field lookups, use `search_lape_libs`. For conceptual or natural-language queries, use `search_lape_rag`. Do not answer from memory. See "When to use each" above.
 3. Read `docs/README.md` to find which topic file in `docs/` is relevant to the task at hand.
 4. Read that topic file in full before writing code. Treat it as the primary source for syntax, types, and function behavior in that area.
 5. After retrieval, inspect the returned source files at `%LOCALAPPDATA%\Simba\Includes\` when exact signatures, parameter order, or behavior details matter — index summaries are mechanical and may not be descriptive enough on their own.
@@ -257,12 +296,13 @@ Documented honestly rather than glossed over:
 - This repository contains no automated tests, linting, or CI for Lape code, and currently has no mechanism to verify that documented patterns still compile against the latest SRL-T/WaspLib release.
 
 **Retrieval system:**
-- Search is keyword and fuzzy based (`difflib`), not semantic or embedding based. Broad natural language queries ("function that converts a string to a number") work poorly unless those words appear literally in a symbol's name or summary.
-- Lape interpreter built-ins (`StrToInt`, `IntToStr`, `Length`, `WriteLn`, etc.) are not present in the scanned library index — they are defined in the Lape interpreter itself, not in the scanned source files.
-- Weak or empty results are inconclusive. They should not be treated as proof that a symbol does not exist. Rephrase the query with a more specific name, or inspect the source directly.
-- Index summaries are mechanically generated and often brief (`"Returns Boolean"`, `"Field of X. Type: Y."`). After retrieval, always verify against the source file before relying on a signature, field type, or behavior claim.
-- A future RAG/vector embedding layer may replace keyword search as the primary retrieval path. Until then, the MCP tool and fallback script are the required retrieval mechanism.
-- The MCP tool (`search_lape_libs`) has been validated by direct function call and import testing. End-to-end stdio invocation by a live MCP client requires the server to have been loaded at session startup and has not been separately verified in a live client session.
+- Keyword search (`search_lape_libs`) is `difflib`-based, not semantic. Broad natural language queries work poorly unless those words appear literally in the index.
+- Semantic RAG search (`search_lape_rag`) uses `all-MiniLM-L6-v2` embeddings and handles natural-language queries, but results are finding aids — always verify against source files.
+- Lape interpreter built-ins (`StrToInt`, `IntToStr`, `Length`, `WriteLn`, etc.) are not in the scanned library index — they are defined in the Lape interpreter itself. Neither retrieval tool will find them.
+- Weak or empty results from either tool are inconclusive. They should not be treated as proof that a symbol does not exist.
+- Index summaries are mechanically generated and often brief. Always verify signatures and behavior against the actual source file at `%LOCALAPPDATA%\Simba\Includes\`.
+- The vector database at `.cache/lape_rag/` is gitignored and must be built locally by every developer.
+- All three MCP tools (`search_lape_libs`, `search_lape_rag`, `lape_index_status`) have been validated by direct function call and import testing. End-to-end stdio invocation by a live MCP client has not been separately verified in a live session.
 
 **Architecture:**
 - The previous version of this repository's premise (an LLM-calling host application for Lape scripts) is archived, not deleted, and could resurface as a separate, explicitly-scoped effort if ever revisited — it is not part of the current direction.
