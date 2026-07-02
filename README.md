@@ -14,12 +14,13 @@ In scope:
 - Documentation of Lape language behavior as actually observed in SRL-T/WaspLib source code and real scripts.
 - Documentation of SRL-T/WaspLib API usage patterns: interfaces, walking/mapping, antiban, GUI/config, OCR/color detection, items/bank, failsafes.
 - Operating instructions for AI coding agents working in this repository or using it as a reference (`CLAUDE.md`, `AGENTS.md`).
+- A generated symbol index of the installed SRL-T, WaspLib, and Farm libraries, with an MCP server and fallback search script for retrieval.
 - A clear process for what to do when documentation is missing or uncertain.
 
 Out of scope:
 - A general-purpose Pascal/Delphi/Free Pascal reference. Lape overlaps with Pascal syntax but is documented here only as it is actually used in Simba/SRL-T/WaspLib scripts.
 - Production Lape scripts. This repository does not currently contain runnable `.simba` example scripts (see "Git and file handling" below) and does not claim to.
-- An LLM-calling host application. An earlier version of this repository described a hypothetical Free Pascal/Delphi application that would expose LLM provider APIs (OpenAI, Anthropic, etc.) to Lape scripts. That was never implemented and is not part of this repository's current direction. See `docs/legacy-notes.md`.
+- An LLM-calling host application. An earlier version of this repository described a hypothetical Free Pascal/Delphi application that would expose LLM provider APIs to Lape scripts. That was never implemented and is not part of this repository's current direction. See `docs/legacy-notes.md`.
 
 ## SRL-T and WaspLib as core references
 
@@ -37,43 +38,160 @@ The main goal is to reduce hallucinated syntax, fake APIs, wrong assumptions, in
 ## Repository structure
 
 ```
-README.md              - this file
-CLAUDE.md               - operating rules for Claude sessions working in this repository
-AGENTS.md               - the same operating rules, written for other AI coding agents
-.gitignore               - excludes *.simba files from version control
+README.md               — this file
+CLAUDE.md               — operating rules for Claude sessions working in this repository
+AGENTS.md               — the same operating rules, written for other AI coding agents
+.gitignore              — excludes *.simba files from version control
+scripts/
+  search_lape_libs.py   — keyword/fuzzy search over the symbol index (fallback retrieval)
+  mcp_lape_libs_server.py — MCP server exposing search_lape_libs tool (requires mcp[cli])
 docs/
-  README.md             - index of the docs/ folder
-  srl-t-reference-policy.md - when and how to consult SRL-T documentation
-  wasplib-reference-policy.md - when and how to consult WaspLib documentation
-  library-relationship.md - how SRL-T and WaspLib relate in this repository
-  script-generation-workflow.md - conservative workflow for AI agents
-  quality-review.md     - review notes against SRL-T and WaspLib documentation
-  known-gaps.md         - current uncertainty and missing-example tracking
-  script-anatomy.md      - high-level overview of Lape/WaspLib script structure
-  map-walking.md         - positioning and movement (Map, Objects, TRSObjectV2, legacy TRSWalker)
-  interfaces.md          - fixed UI interfaces (Inventory, Bank, Chat, GameTabs, etc.)
-  camera-minimap.md      - zoom, camera rotation, visibility checks
-  interact-mouse.md      - mouse interaction, uptext verification, ChooseOption
-  antiban.md             - TAntiban tasks, breaks, sleeps, biometrics
-  gui-config.md          - TScriptForm, GUI controls, TConfigJSON settings persistence
-  ocr-color.md           - OCR and color-detection patterns
-  items-bank.md          - items, inventory, and bank handling
-  failsafes.md           - logging, termination, timeouts, error handling
-  legacy-notes.md        - what was kept, rewritten, or archived from the previous version of this repository
-  community/             - community-sourced notes (Discord, experienced script authors); leads, not verified documentation
+  README.md             — index of the docs/ folder
+  script-anatomy.md     — high-level overview of Lape/WaspLib script structure
+  map-walking.md        — positioning and movement (Map, Objects, TRSObjectV2, legacy TRSWalker)
+  interfaces.md         — fixed UI interfaces (Inventory, Bank, Chat, GameTabs, etc.)
+  camera-minimap.md     — zoom, camera rotation, visibility checks
+  interact-mouse.md     — mouse interaction, uptext verification, ChooseOption
+  antiban.md            — TAntiban tasks, breaks, sleeps, biometrics
+  gui-config.md         — TScriptForm, GUI controls, TConfigJSON settings persistence
+  ocr-color.md          — OCR and color-detection patterns
+  items-bank.md         — items, inventory, and bank handling
+  failsafes.md          — logging, termination, timeouts, error handling
+  srl-t-reference-policy.md  — when and how to consult SRL-T documentation
+  wasplib-reference-policy.md — when and how to consult WaspLib documentation
+  library-relationship.md    — how SRL-T and WaspLib relate in this repository
+  script-generation-workflow.md — conservative workflow for AI agents
+  quality-review.md     — review notes against SRL-T and WaspLib documentation
+  known-gaps.md         — current uncertainty and missing-example tracking
+  legacy-notes.md       — what was kept, rewritten, or archived from the previous version
+  community/            — community-sourced notes (Discord, experienced script authors);
+                          leads, not verified documentation
+  generated/
+    lape_lib_symbol_index.jsonl — machine-readable symbol index (8623 entries)
+    lape_lib_symbol_index.md   — human-readable symbol index overview
+    lape_lib_scan_report.md    — scan metadata, coverage report, and known gaps
+    lape_lib_retrieval.md      — fallback search script documentation and examples
+    lape_lib_mcp.md            — MCP server documentation, schema, and examples
 archive/
-  legacy/                - old repository content, preserved unchanged, no longer treated as current guidance
+  legacy/               — old repository content, preserved unchanged, not current guidance
 ```
+
+## Lape library retrieval
+
+The repository includes a symbol index of the installed SRL-T, WaspLib, and Farm libraries and two retrieval interfaces over it. Both are required anti-hallucination infrastructure: an AI agent must retrieve before it answers any question about a Lape symbol, type, or function.
+
+### Symbol index
+
+`docs/generated/lape_lib_symbol_index.jsonl` contains 8623 entries (functions, procedures, methods, types, record fields, constants, variables, enums, aliases, and include directives) scanned from the installed Simba libraries. The index was built from source files under:
+
+```
+%LOCALAPPDATA%\Simba\Includes\SRL-T\
+%LOCALAPPDATA%\Simba\Includes\WaspLib\
+%LOCALAPPDATA%\Simba\Includes\Farm\
+```
+
+See `docs/generated/lape_lib_scan_report.md` for coverage details and known gaps.
+
+### MCP server (`search_lape_libs`)
+
+`scripts/mcp_lape_libs_server.py` is an MCP server that exposes the symbol index as a single tool named `search_lape_libs`. When the server is active in a Claude session, the tool can be called directly.
+
+**Dependency:**
+
+```
+py -m pip install "mcp[cli]"
+```
+
+**Manual run (for testing — blocks on stdio, intended for MCP clients):**
+
+```
+py scripts/mcp_lape_libs_server.py
+```
+
+**Claude Code project config** (already present in `.claude/settings.local.json`):
+
+```json
+{
+  "mcpServers": {
+    "lape-libs": {
+      "command": "py",
+      "args": ["scripts/mcp_lape_libs_server.py"]
+    }
+  }
+}
+```
+
+**Claude Desktop config** (`%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "lape-libs": {
+      "command": "py",
+      "args": ["C:\\path\\to\\LapeLLM\\scripts\\mcp_lape_libs_server.py"]
+    }
+  }
+}
+```
+
+**Important:** The `search_lape_libs` tool only appears in the active tool list if the MCP server was loaded when the Claude session started. After adding or changing MCP configuration, start a new session or restart Claude Code before expecting the tool to be available. If the tool is absent, use the fallback script instead.
+
+See `docs/generated/lape_lib_mcp.md` for the full input/output schema, example calls, and troubleshooting.
+
+### Fallback search script
+
+`scripts/search_lape_libs.py` is a zero-external-dependency Python script providing the same search capability without an MCP client. Use it whenever the MCP tool is unavailable.
+
+**General query:**
+
+```
+py scripts/search_lape_libs.py "<query>" --limit 10
+```
+
+**Record field lookup:**
+
+```
+py scripts/search_lape_libs.py "TRSMapObject" --kind field --limit 20
+```
+
+**JSON output:**
+
+```
+py scripts/search_lape_libs.py "<query>" --json --limit 10
+```
+
+Valid `--kind` values: `field`, `method`, `function`, `procedure`, `record`, `constant`, `variable`, `include`, `alias`, `enum`, `operator`.
+
+See `docs/generated/lape_lib_retrieval.md` for scoring details, query strategy, and example outputs.
+
+### Record field inheritance: TRSObjectV2
+
+`TRSObjectV2 = record(TRSMapObject)`. It declares only two fields directly:
+
+| Field | Type |
+|-------|------|
+| `ObjType` | `Int32` |
+| `Rotations` | `TSingleArray` |
+
+Fields such as `Walker`, `Finder`, `Filter`, `Coordinates`, `UpText`, `Actions`, `Size`, `Name`, and `ID` are inherited from `TRSMapObject`. To inspect them:
+
+```
+py scripts/search_lape_libs.py "TRSMapObject" --kind field --limit 20
+```
+
+The same applies to `TRSNPCV2 = record(TRSMapObject)`, which adds only `Level`, `DotType`, and `DotFilters`.
 
 ## How AI agents should use this repository
 
 An AI agent working on a Lape/Simba/WaspLib task in or with this repository should:
 
 1. Read `CLAUDE.md` (if running as Claude) or `AGENTS.md` (otherwise) before writing or modifying any script.
-2. Read `docs/README.md` to find which topic file in `docs/` is relevant to the task at hand.
-3. Read that topic file in full before writing code. Treat it as the primary source for syntax, types, and function behavior in that area.
-4. Compare any new code against patterns already documented in `docs/`, rather than inventing a new approach to a problem `docs/` already covers.
-5. When `docs/` does not cover something, say so explicitly rather than guessing. See "Uncertainty policy" below.
+2. **Retrieve before answering.** Call `search_lape_libs` (MCP tool if active, fallback script otherwise) for every symbol, type, or function the answer will depend on. Do not answer from memory.
+3. Read `docs/README.md` to find which topic file in `docs/` is relevant to the task at hand.
+4. Read that topic file in full before writing code. Treat it as the primary source for syntax, types, and function behavior in that area.
+5. After retrieval, inspect the returned source files at `%LOCALAPPDATA%\Simba\Includes\` when exact signatures, parameter order, or behavior details matter — index summaries are mechanical and may not be descriptive enough on their own.
+6. Compare any new code against patterns already documented in `docs/`, rather than inventing a new approach to a problem `docs/` already covers.
+7. When `docs/` does not cover something, say so explicitly rather than guessing. See "Uncertainty policy" below.
 
 This repository is intended to be read by the agent, not just by a human maintainer. Sections in `CLAUDE.md`/`AGENTS.md` are written as direct operating instructions for that purpose.
 
@@ -133,9 +251,20 @@ When contributing:
 
 Documented honestly rather than glossed over:
 
+**Documentation coverage:**
 - Coverage of `docs/` is uneven. Several areas relevant to real script-writing (pure Lape language semantics independent of any library call, build/compile error diagnostics, performance characteristics) have not been separately researched.
 - `docs/` was verified against one snapshot of installed SRL-T/WaspLib source and a set of real scripts examined during research; it is not continuously re-verified against upstream changes.
 - This repository contains no automated tests, linting, or CI for Lape code, and currently has no mechanism to verify that documented patterns still compile against the latest SRL-T/WaspLib release.
+
+**Retrieval system:**
+- Search is keyword and fuzzy based (`difflib`), not semantic or embedding based. Broad natural language queries ("function that converts a string to a number") work poorly unless those words appear literally in a symbol's name or summary.
+- Lape interpreter built-ins (`StrToInt`, `IntToStr`, `Length`, `WriteLn`, etc.) are not present in the scanned library index — they are defined in the Lape interpreter itself, not in the scanned source files.
+- Weak or empty results are inconclusive. They should not be treated as proof that a symbol does not exist. Rephrase the query with a more specific name, or inspect the source directly.
+- Index summaries are mechanically generated and often brief (`"Returns Boolean"`, `"Field of X. Type: Y."`). After retrieval, always verify against the source file before relying on a signature, field type, or behavior claim.
+- A future RAG/vector embedding layer may replace keyword search as the primary retrieval path. Until then, the MCP tool and fallback script are the required retrieval mechanism.
+- The MCP tool (`search_lape_libs`) has been validated by direct function call and import testing. End-to-end stdio invocation by a live MCP client requires the server to have been loaded at session startup and has not been separately verified in a live client session.
+
+**Architecture:**
 - The previous version of this repository's premise (an LLM-calling host application for Lape scripts) is archived, not deleted, and could resurface as a separate, explicitly-scoped effort if ever revisited — it is not part of the current direction.
 
 ## Contributing

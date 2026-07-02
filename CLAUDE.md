@@ -32,22 +32,23 @@ This repository is a documentation and instruction layer that helps Claude (and 
 
 ## Mandatory libs symbol index, RAG, and MCP retrieval
 
-**Current status: symbol index and local retrieval script are implemented; RAG database and MCP server are not yet implemented.**
+**Current status: symbol index, local retrieval script, and MCP server are implemented. RAG database (vector embeddings) is not yet built.**
 
 - `docs/generated/lape_lib_symbol_index.jsonl` — **exists** (8623 entries, 243 source files scanned).
 - `docs/generated/lape_lib_symbol_index.md` — **exists** (human-readable overview).
-- `scripts/search_lape_libs.py` — **exists** (keyword/fuzzy retrieval fallback; see "Retrieval fallback script" below).
-- RAG database — **not yet built**.
-- MCP server (`search_lape_libs`) — **not yet configured**.
+- `scripts/search_lape_libs.py` — **exists** (keyword/fuzzy retrieval script; see "Retrieval fallback script" below).
+- `scripts/mcp_lape_libs_server.py` — **exists** (MCP server wrapping the retrieval script; registered in `.claude/settings.local.json`).
+- MCP tool name: `search_lape_libs` — **configured** in `.claude/settings.local.json` for this project.
+- RAG database (vector embeddings) — **not yet built**.
 
-Until the MCP server exists, Claude must use `scripts/search_lape_libs.py` as the primary retrieval step before answering any Lape question. See "Retrieval fallback script" for the exact commands.
+**Claude must call `search_lape_libs` before answering any Lape/SRL-T/WaspLib/Farm question.** If the MCP tool is available in the working environment, use it directly. If it is unavailable, use the fallback script. See "Retrieval fallback script" for the exact fallback commands.
 
 ### Library source location
 
 The installed SRL-T, WaspLib, and Farm libraries are located at:
 
 ```
-C:\Users\sebas\AppData\Local\Simba\Includes\
+%LOCALAPPDATA%\Simba\Includes\
 ```
 
 This path contains three subdirectories:
@@ -148,7 +149,7 @@ search_lape_libs("function that converts text to integer")
 
 ### Retrieval fallback script
 
-**`scripts/search_lape_libs.py` is the primary retrieval fallback until MCP is implemented.** Run it before answering any question about a Lape symbol, type, function, or behavior.
+**`scripts/search_lape_libs.py` is the retrieval fallback when the MCP `search_lape_libs` tool is unavailable.** Run it before answering any question about a Lape symbol, type, function, or behavior.
 
 General query:
 
@@ -172,13 +173,13 @@ Valid `--kind` values: `field`, `method`, `function`, `procedure`, `record`, `co
 
 The script searches across: `name`, `kind`, `signature`, `summary`, `file_path`, `location`, `related_symbols`, `source_snippet`, `uncertainty`. It uses keyword token matching and `difflib` fuzzy matching — no external dependencies. See `docs/generated/lape_lib_retrieval.md` for full documentation of the scoring method, limitations, and example outputs.
 
-**After running the script**, use the returned `file_path` and `location` to read the actual source in `C:\Users\sebas\AppData\Local\Simba\Includes\` when exact signatures or behavior details are needed — the index entries have mechanical summaries that may not describe the purpose of a symbol in detail.
+**After running the script**, use the returned `file_path` and `location` to read the actual source in `%LOCALAPPDATA%\Simba\Includes\` when exact signatures or behavior details are needed — the index entries have mechanical summaries that may not describe the purpose of a symbol in detail.
 
 ### Fallback when retrieval is unavailable
 
 If `scripts/search_lape_libs.py` cannot be run (Python unavailable, file missing, index corrupted), fall back to direct source inspection:
 
-1. Read the relevant source file(s) under `C:\Users\sebas\AppData\Local\Simba\Includes\` directly.
+1. Read the relevant source file(s) under `%LOCALAPPDATA%\Simba\Includes\` directly.
 2. Locate the exact symbol, signature, and context in source.
 3. Cite the exact file path and line number in the answer.
 4. If the symbol cannot be found after a thorough search, say **"I am not sure based on the available documentation"** and state what would resolve the gap.
@@ -199,8 +200,8 @@ Direct inspection is slower than retrieval but equally mandatory. Do not substit
 Before answering any question about Lape syntax, library functions, SRL-T, WaspLib, Simba, types, includes, constants, methods, behavior, or code generation, follow this exact order:
 
 1. **Understand the request.** Identify every symbol, type, function, or behavior the answer depends on.
-2. **Query the retrieval tool.** Run `py scripts/search_lape_libs.py "<query>" --limit 10` for general lookups, or `py scripts/search_lape_libs.py "<name>" --kind field --limit 20` when looking for record fields. Use multiple targeted queries if the question touches several symbols. If the MCP `search_lape_libs` tool is available in the working environment, use it instead — it is higher priority than the script but follows the same contract.
-3. **Inspect source files when needed.** If retrieval returns no result, an unclear result, or the answer depends on exact behavior, side effects, parameter order, or return type, read the actual source file in `C:\Users\sebas\AppData\Local\Simba\Includes\` directly.
+2. **Query the retrieval tool.** If the MCP `search_lape_libs` tool is available in the working environment, call it directly — it is the primary retrieval path. If it is unavailable, run `py scripts/search_lape_libs.py "<query>" --limit 10` for general lookups, or `py scripts/search_lape_libs.py "<name>" --kind field --limit 20` when looking for record fields. Use multiple targeted queries if the question touches several symbols.
+3. **Inspect source files when needed.** If retrieval returns no result, an unclear result, or the answer depends on exact behavior, side effects, parameter order, or return type, read the actual source file in `%LOCALAPPDATA%\Simba\Includes\` directly.
 4. **Check `docs/`.** Compare the retrieved or inspected information against the relevant `docs/*.md` file. `docs/` takes precedence over secondary sources. If direct source inspection reveals a discrepancy with `docs/`, flag the conflict explicitly.
 5. **Answer only from verified information.** Do not mix verified facts with assumed facts. If part of an answer is verified and part is not, label each part separately.
 6. **Cite file paths and locations.** Every claim about a symbol's name, signature, ownership, or behavior must cite the exact file path and line number or nearest location.
@@ -237,11 +238,24 @@ Before writing or modifying any Lape/`.simba` content:
 1. Read `docs/README.md` to identify which topic file(s) are relevant.
 2. Follow the full retrieval workflow above for every symbol, API, type, or behavior the planned code will use.
 3. Read the relevant `docs/*.md` files in full. Do not skip this because the task looks simple — small, "obvious" actions have been the source of real, hard-to-diagnose bugs in this project precisely because an assumption wasn't re-verified first.
-4. If retrieval is unavailable, stale, or inconclusive, inspect the relevant source files in `C:\Users\sebas\AppData\Local\Simba\Includes\` directly before writing any code.
+4. If retrieval is unavailable, stale, or inconclusive, inspect the relevant source files in `%LOCALAPPDATA%\Simba\Includes\` directly before writing any code.
 5. If the task touches an area not covered by `docs/`, the symbol index, or direct source inspection, say so explicitly and treat that area as uncertain (see "Uncertainty handling") rather than improvising.
 6. Compare the planned code against patterns already established in `docs/` before proposing anything non-trivial or structurally new. Reuse an existing documented pattern instead of inventing a new one.
 7. Only after steps 1–6 should code be written or edited.
 8. Do not write production Lape scripts unless explicitly requested. Documentation work does not require writing or modifying `.simba` files.
+
+## Required workflow for non-trivial Lape code
+
+When writing a sophisticated or multi-part Lape script, work in small verified increments. Do not generate a complete script in one pass and present it as working code.
+
+1. **Retrieve first.** Run `search_lape_libs` (or the fallback script) for every symbol, type, and method the planned code will use before writing any of it.
+2. **Inspect source when needed.** Use the `file_path` and `location` from retrieval results to read the actual source in `%LOCALAPPDATA%\Simba\Includes\` when exact signatures, parameter order, or side effects matter.
+3. **Match a documented pattern.** Identify the closest existing pattern in `docs/` or a real script before proposing structure. Reuse it — do not invent a new one.
+4. **Write one section at a time.** Generate only the next small, self-contained piece (one procedure, one state handler, one type declaration). Do not generate the full script and explain it later.
+5. **Verify before continuing.** If a Lape compiler, Simba syntax checker, or runnable test command is available in the working environment, run it on each section before writing the next one. State the result explicitly.
+6. **Fix errors before adding more code.** If a compiler or syntax error is reported, fix it fully before generating new sections. Do not stack unverified code on top of broken code.
+7. **Never stack unverified abstractions.** Do not introduce a helper, a wrapper, or a new abstraction unless its component symbols have each been individually retrieved and verified. Boring, source-backed code is always preferred over clever code.
+8. **Declare uncertainty before generating.** If a symbol needed by the next section cannot be found via retrieval or source inspection, say so explicitly — using the required phrase "I am not sure based on the available documentation" — before writing any code that depends on it.
 
 ## Lape language rules
 
@@ -291,7 +305,7 @@ See `docs/community/index.md` for the full policy, confidence-level and source-t
 - After flagging uncertainty, state plainly what would resolve it: a specific missing doc section, a real script example, or a specific function's actual source. Ask for it.
 - Distinguish three categories explicitly whenever relevant, rather than blending them into one confident-sounding answer:
   1. **Confirmed from `docs/`** — directly stated in one of this repository's `.md` files.
-  2. **Confirmed from source inspection or WaspLib source/docs (secondary)** — checked against the installed libraries at `C:\Users\sebas\AppData\Local\Simba\Includes\` or the WaspLib GitHub repo because `docs/` didn't cover it.
+  2. **Confirmed from source inspection or WaspLib source/docs (secondary)** — checked against the installed libraries at `%LOCALAPPDATA%\Simba\Includes\` or the WaspLib GitHub repo because `docs/` didn't cover it.
   3. **Uncertain conclusion** — inferred or unverified, not directly confirmed anywhere.
 - Never present category 3 as if it were category 1 or 2.
 - If documentation is insufficient to answer a Lape-syntax question with confidence, ask the user for a real script example rather than guessing.
@@ -317,7 +331,7 @@ See `docs/community/index.md` for the full policy, confidence-level and source-t
 
 The generated files `docs/generated/lape_lib_symbol_index.md`, `docs/generated/lape_lib_symbol_index.jsonl`, and `docs/generated/lape_lib_scan_report.md` are derived from a point-in-time scan of the installed libraries. They become stale when:
 
-- Any file under `C:\Users\sebas\AppData\Local\Simba\Includes\` changes (library update, patch, new file added or removed).
+- Any file under `%LOCALAPPDATA%\Simba\Includes\` changes (library update, patch, new file added or removed).
 - The git commit hash of this repository recorded in the scan report no longer matches `HEAD`.
 - A contributor discovers that an entry in the index has an incorrect signature, incorrect file attribution, or missing required field.
 
@@ -332,7 +346,7 @@ The RAG database must be rebuilt from the JSONL file whenever the JSONL file is 
 
 ## MCP retrieval contract
 
-This section defines the required behavior of the `search_lape_libs` MCP tool once it is implemented. **This tool does not currently exist.** It must be configured before the retrieval workflow can use it.
+This section defines the required behavior of the `search_lape_libs` MCP tool. **The tool is implemented** (`scripts/mcp_lape_libs_server.py`, registered in `.claude/settings.local.json`). It uses keyword + `difflib` fuzzy matching over the JSONL index — not vector embeddings. See `docs/generated/lape_lib_mcp.md` for full documentation, input/output schema, example calls, and troubleshooting.
 
 ### Required tool behavior
 
@@ -379,9 +393,9 @@ py scripts/search_lape_libs.py "<symbol>" --kind field --limit 20
 If the script is also unavailable, fall back to direct source inspection at:
 
 ```
-C:\Users\sebas\AppData\Local\Simba\Includes\SRL-T\
-C:\Users\sebas\AppData\Local\Simba\Includes\WaspLib\
-C:\Users\sebas\AppData\Local\Simba\Includes\Farm\
+%LOCALAPPDATA%\Simba\Includes\SRL-T\
+%LOCALAPPDATA%\Simba\Includes\WaspLib\
+%LOCALAPPDATA%\Simba\Includes\Farm\
 ```
 
 Every symbol claimed in an answer must be traceable to a specific file and line in one of these directories, or to a specific `docs/*.md` file in this repository. No exceptions.
@@ -403,7 +417,7 @@ Do not introduce non-English content into repository files.
 - "This isn't confirmed in `docs/`, so I checked `github.com/torwent/wasplib` directly and found the actual signature there — flagging this as a secondary-source confirmation, not a `docs/`-confirmed fact."
 - "The old repository described a `Host.GetLLMInterface()` API, but that was explicitly marked hypothetical and was never implemented — I won't treat it as real."
 - "I queried `search_lape_libs('Bank withdraw')` and found `TRSBank.WithdrawItem` at `WaspLib/utils/bank.simba:247` with confidence `confirmed`. Signature from source: ..."
-- "`search_lape_libs` is not yet configured, so I read `C:\Users\sebas\AppData\Local\Simba\Includes\SRL-T\interfaces\minimap.simba` directly. `Minimap.GetPosition` is at line 312 — confirmed from source."
+- "`search_lape_libs` returned no result for this query, so I read `%LOCALAPPDATA%\Simba\Includes\SRL-T\interfaces\minimap.simba` directly. `Minimap.GetPosition` is at line 312 — confirmed from source."
 
 ## Examples of disallowed behavior
 
@@ -416,16 +430,16 @@ Do not introduce non-English content into repository files.
 - Treating anything in `archive/legacy/` (including the hypothetical Host API) as if it is implemented, current, or part of this repository's direction.
 - Writing a production Lape script when only documentation work was requested.
 - Creating, modifying, staging, or committing `.simba` files.
-- Answering a question about a Lape function or type from memory without first querying `search_lape_libs` or inspecting the source file at `C:\Users\sebas\AppData\Local\Simba\Includes\`.
+- Answering a question about a Lape function or type from memory without first querying `search_lape_libs` or inspecting the source file at `%LOCALAPPDATA%\Simba\Includes\`.
 - Treating a `search_lape_libs` result with confidence `partial` or `unclear` as a confirmed fact without verifying against the source file.
 - Claiming that `search_lape_libs` returned a result when the tool was not actually queried.
-- Treating the installed library path `C:\Users\sebas\AppData\Local\Simba\Includes\` as a "libs/" directory inside this repository — the repository has no such folder.
+- Treating the installed library path `%LOCALAPPDATA%\Simba\Includes\` as a "libs/" directory inside this repository — the repository has no such folder.
 
 ## Final checklist before answering
 
 Before sending any response that includes Lape code or claims about how Lape/SRL-T/WaspLib behaves, confirm:
 
-- [ ] Have I queried `search_lape_libs` (if available) or inspected the relevant source files at `C:\Users\sebas\AppData\Local\Simba\Includes\` directly?
+- [ ] Have I queried `search_lape_libs` (if available) or inspected the relevant source files at `%LOCALAPPDATA%\Simba\Includes\` directly?
 - [ ] Have I cited exact file paths and line numbers for every symbol or behavior claim?
 - [ ] Did I note the confidence level of every retrieved or inspected result, and verify `partial`/`unclear` entries against source?
 - [ ] Have I read `docs/README.md` and the relevant topic file(s) for this task?

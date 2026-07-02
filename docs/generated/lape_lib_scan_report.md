@@ -14,8 +14,10 @@
 
 ## Scanned Root Paths
 
-| Library | Absolute Path | Relative-to-Includes Prefix |
-|---------|--------------|----------------------------|
+> **Note:** The absolute paths below are historical metadata from the machine that generated this index. They are not required runtime paths and should not be copied into instructions or configuration. For portable Windows source inspection, resolve paths through `%LOCALAPPDATA%\Simba\Includes\` instead.
+
+| Library | Absolute Path (scan machine) | Relative-to-Includes Prefix |
+|---------|------------------------------|----------------------------|
 | SRL-T   | `C:\Users\sebas\AppData\Local\Simba\Includes\SRL-T\` | `SRL-T/` |
 | WaspLib | `C:\Users\sebas\AppData\Local\Simba\Includes\WaspLib\` | `WaspLib/` |
 | Farm    | `C:\Users\sebas\AppData\Local\Simba\Includes\Farm\` | `Farm/` |

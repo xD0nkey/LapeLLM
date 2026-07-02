@@ -221,7 +221,7 @@ Per `CLAUDE.md`:
    ```
 3. Use the returned `file_path` and `location` to read the actual source for exact signatures and behavior.
 4. The script result is a starting point, not a final answer. Always verify against source when the exact signature, parameter order, or behavior matters.
-5. If the script returns no result, fall back to direct source inspection under `C:\Users\sebas\AppData\Local\Simba\Includes\`.
+5. If the script returns no result, fall back to direct source inspection under `%LOCALAPPDATA%\Simba\Includes\`.
 6. Do not claim the script returned a result without actually running it.
 
 ## Query strategy
