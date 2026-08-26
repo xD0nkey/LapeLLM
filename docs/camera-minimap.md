@@ -433,6 +433,46 @@ end;
 
 ---
 
+## 4b. `MainScreen.GetPlayerBox()` crashes if it is the first MM2MS call
+
+Confirmed by an actual runtime error while writing a script:
+
+```
+Runtime error: "Index out of range (index:-1, low:0, high:100)"
+  at line 783 in file SRL-T/osr/mm2ms.simba
+```
+
+`MM2MS.ZoomLevel` is initialised to `-1` (`mm2ms.simba:83`) and is only filled in lazily.
+`GetZoomRectangle` guards for that (`mm2ms.simba:454`):
+
+```pascal
+if MM2MS.ZoomLevel = -1 then
+  MM2MS.ZoomLevel := Options.GetZoomLevel();
+```
+
+but `GetPlayerBox` does not (`mm2ms.simba:783`):
+
+```pascal
+if MM2MS.PlayerBoxes[MM2MS.ZoomLevel] <> [] then   // ZoomLevel is still -1 here
+```
+
+So `MainScreen.GetPlayerBox()` — and anything built on it — throws if it happens to be the
+first thing in the script to touch MM2MS. This is easy to miss because most scripts read the
+zoom incidentally long before that: `Map.SetupChunk`, an antiban zoom adjustment, or any
+walking call will all have initialised it already. A small script, or one whose first real
+action is a mainscreen colour search, hits the raw `-1`.
+
+Fix — force the read during setup, before any mainscreen geometry is used:
+
+```pascal
+MM2MS.GetZoomLevel();   // mm2ms.simba:35, initialises ZoomLevel if it is -1
+```
+
+Note this is a latent bug in the installed library, not in the calling script, so it may be
+fixed upstream at some point. The explicit call is harmless either way.
+
+---
+
 ## 5. Common pitfalls
 
 1. **Forgetting that zoom/angle determine whether an object is clickable before attempting to click.**

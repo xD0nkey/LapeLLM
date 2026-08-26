@@ -127,6 +127,27 @@ begin
 end;
 ```
 
+**`CountItemStack` returns `-1`, not `0`, when the item is absent.** Confirmed by live
+logging of `Inventory.CountItemStack('Coin pouch')`: the readings went
+`15, 15, ... , -1, -1, 3, 6, 10, 13, 16, ... , -1` — the `-1` values are the periods with no
+pouches held at all, not misreads.
+
+This matters for the shape of the test:
+
+```pascal
+// WRONG - never true when the item is absent, because the count is -1:
+if Inventory.CountItemStack('Coin pouch') = 0 then ...
+
+// WRONG - true whether we hold 0 or 30, because -1 is the only "absent" value:
+if Inventory.CountItemStack('Coin pouch') >= 0 then ...
+
+// CORRECT - covers both the -1 (absent) and 0 cases:
+if Inventory.CountItemStack('Coin pouch') < 1 then ...
+```
+
+The `> 0` used in the fallback pattern above is safe for the same reason. Anything that
+tests for equality with `0`, or uses `>= 0` as an "any amount" check, is not.
+
 `Bank.CountItem` has its own quirk worth knowing about (from the documentation comment
 in `bank.simba`): it counts items that share the same sprite/icon in the bank view, which in
 extremely rare cases (the example in the source: Edible seaweed / Seaweed / Giant seaweed)

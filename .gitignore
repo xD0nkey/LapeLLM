@@ -1,4 +1,5 @@
 *.simba
+*.zip
 .cache/
 .generated/
 __pycache__/

@@ -530,6 +530,38 @@ end;
 
 ---
 
+### `Antiban.MinZoom` defaults to 0 — set it if anything you do is zoom-sensitive
+
+`TAntiban.MinZoom`/`MaxZoom` (`antiban.simba:54`) bound the random zoom task. Only `MaxZoom`
+gets a default:
+
+```pascal
+if Self.MaxZoom = 0 then
+  Self.MaxZoom := 100;
+...
+newZoom := SRL.SkewedRand(zoom, Self.MinZoom, Self.MaxZoom);
+```
+
+`MinZoom` is left at `0`, so an unconfigured script can be zoomed **all the way out** by its
+own antiban.
+
+Observed consequence: a script detecting a ground marker by pixel area had a floor of 100
+pixels, with normal readings of 177-420px. After `[Antiban]: Adjust zoom: 2` the marker
+shrank to 100-108px — one notch from being discarded, which would have made the script
+silently skip its target with no error. Anything with a pixel threshold, a minimum cluster
+size, or a fixed `TBox` on the mainscreen has this exposure.
+
+```pascal
+Antiban.MinZoom := 25;
+Antiban.MaxZoom := 75;
+```
+
+`MainScreen.NormalizeDistance()` rescales distances for the current zoom and should be used
+for thresholds, but it does not save you at extreme zoom where the thing you are measuring
+has degenerated in the actual image.
+
+---
+
 ## 9. Checklist: antiban in a new script
 
 1. Is the script built on `TBaseScript`/`TBaseWalkerScript`/`TBaseBankScript`? Then you get `Antiban.Setup()` for free via `Init` — just verify that your `Run` loop actually calls `Self.DoAntiban()` every iteration.

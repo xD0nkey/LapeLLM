@@ -304,6 +304,45 @@ system text, `2101487`/`811014` (and other "raw data" color values in hex/dec) s
 for special NPC dialogue colors; if you don't know the color, run with the default (all
 `CHAT_MESSAGE_COLORS`).
 
+### Pitfall: `CHAT_MESSAGE_COLORS` does not cover every game message colour
+
+`GetMessage` OCRs with `OCR._RecognizeStatic(matrix, TOCRColorFilter.Create(colors), ...)`
+(`chat.simba:474`), which needs a **100% character match** against the colours it is given.
+A colour that is even slightly off does not degrade into partial text — it returns an empty
+string. So an empty result means "could not read", never "no message here".
+
+Confirmed case, Varlamore's urchin distraction message: it renders in RGB(104, 0, 191),
+i.e. `$BF0068` = `12517480`. The nearest constant, `CHAT_COLOR_PURPLE`, is `$7F007F` =
+`8323199` = RGB(127, 0, 127) — a dark magenta, nowhere near it. Filtering on
+`CHAT_COLOR_PURPLE` returned `''` on every line, every poll, while the message was plainly
+on screen the whole time.
+
+Note the constants are **BGR-packed**, matching Simba's colour picker output directly:
+`CHAT_COLOR_BLUE = $FF0000` is blue, not red. An ACA/colour-picker reading of RGB(r, g, b)
+becomes `b<<16 | g<<8 | r`.
+
+Two practical takeaways:
+
+- Before filtering on a colour constant, prove the constant is right. A cheap probe is to
+  dump all 8 lines with the default `CHAT_MESSAGE_COLORS` and watch for a line that reads
+  `''` while its neighbours read fine — as the chat scrolls, that empty slot marches upward
+  in lockstep with the real messages, which identifies it as a real but unreadable line
+  rather than an empty one.
+- If the colour is not in the constant list, either add the measured integer as your own
+  constant, or drop the colour filter and match on the message text alone — a distinctive
+  fragment is usually specific enough on its own, especially with public chat filtered off.
+
+### Pitfall: line 7 is the newest line, and "message present" is not "event just happened"
+
+`Chat.LineBoxes := Grid(1, 9, ...)` (`chat.simba:88`) with `CHAT_INPUT_LINE = 8`, so line 0
+is the **top** (oldest visible) and line 7 the newest. `FindMessage` scans all of 0..7, which
+makes it a poor edge detector: a message stays visible for as long as it takes other messages
+to push it off, which can be minutes. For "did this event just fire", read line 7 only and
+treat the transition onto line 7 as the event.
+
+That only works when something else is reliably appended afterwards to push it up. Check
+that the surrounding activity actually prints its own chat lines before relying on it.
+
 ### Dialogue choices / continue
 ```pascal
 Chat.FindOption('Yes');                  // does the option "Yes" exist in the chat right now?

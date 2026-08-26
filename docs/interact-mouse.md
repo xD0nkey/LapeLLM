@@ -154,6 +154,45 @@ The lesson to generalize: **whenever a click's meaning can vary with the game's 
 
 ---
 
+### `IsUpText` does NOT wait by default
+
+```pascal
+function TRSMainScreen.IsUpText(Text: TStringArray; Timeout: Int32 = -1): Boolean;
+function TRSMainScreen.IsUpText(Text: String; Timeout: Int32 = -1): Boolean; overload;
+```
+
+`mainscreen.simba:240-241`. The default `Timeout = -1` means **one immediate read**, not
+"wait a sensible amount". The uptext does not update the instant `Mouse.Move` returns, so:
+
+```pascal
+Mouse.Move(b);
+if MainScreen.IsUpText('Fishing spot') then   // usually FALSE even when correct
+```
+
+fails on the first hover most of the time, and the surrounding retry loop hides it as a
+mysterious extra second per interaction. Pass a timeout:
+
+```pascal
+Mouse.Move(b);
+if MainScreen.IsUpText('Fishing spot', 250) then
+```
+
+### Uptext OCR drops characters — match a substring, not the full word
+
+Measured uptext from a live client:
+
+```
+"Pickpocket Wealthy citize / 3 more option"
+```
+
+The trailing `n` of "citizen" and the `s` of "options" are missing. Matching
+`'Wealthy citizen'` therefore fails intermittently in a way that looks like a detection
+problem somewhere else entirely. Match a shorter, still-distinctive fragment
+(`'Wealthy citize'`), and when debugging an interaction always print the raw
+`MainScreen.GetUpText()` rather than only the boolean from `IsUpText`.
+
+---
+
 ## 3. ChooseOption — right-click menus
 
 `ChooseOption` (global `TRSChooseOption` variable) handles the context menu that opens on right-click.

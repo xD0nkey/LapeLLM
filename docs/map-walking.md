@@ -335,6 +335,125 @@ entirely on `Walker` (world coordinates) or `Finder` (color search).
 
 ---
 
+## 4b. How `TRSNPCV2` candidates are actually generated — and the ordering trap
+
+Verified directly against `SRL-T/osr/map/mapobject.simba` while building a Varlamore
+thieving script, after a real bug where the script repeatedly clicked the wrong NPC.
+
+`TRSNPCV2.FindEx` (`mapobject.simba:895-907`) picks one of two completely different
+strategies depending on the filters:
+
+```pascal
+if Self.Filter.Walker or Self.Filter.Minimap then
+begin
+  cuboids := Self.GetCuboidArray();
+  if cuboids = [] then Exit;
+  atpa := Self.FindOnMainScreen(cuboids);
+end
+else if Self.Filter.Finder then
+  atpa := MainScreen.FindObject(Self.Finder).SortFrom(MainScreen.GetPlayerBox().Center());
+```
+
+Three consequences that are easy to get wrong:
+
+**1. `Finder.Colors` usually does not find the NPC.** If either `Filter.Walker` or
+`Filter.Minimap` is set — and the ordinary setup calls set *both* — candidates come from
+minimap dots, and the colours only *refine* the match inside each resulting cuboid via
+`FindOnMainScreen`. The pure colour search is the `else` branch and only runs when both
+filters are off. Tight ACA tolerances are therefore much less dangerous than they look on
+this path, and colour overlap with static UI elements is a non-issue: only the cuboids are
+searched, never the whole screen.
+
+**2. `Self.Coordinates` is dead on that path.** `GetCuboidArray` (`mapobject.simba:800-822`)
+builds its candidates from `Minimap.GetFilteredDotArray(...)` and never reads
+`Coordinates`. Calling `SetupCoordinates([someTile])` on a wandering NPC does *not* mean
+"look for it here" — its only real effect is setting `Filter.Walker := True`
+(`mapobject.simba:1534`). **`DotFilters` is the actual target filter.**
+
+**3. Results are sorted nearest-to-PLAYER, not nearest-to-anything-else.** Inside
+`GetCuboidArray`: `dots := dots.Sorted(Minimap.Center);` (`mapobject.simba:810`). So
+`atpa[0]` is whichever matching NPC is closest to *you*.
+
+Point 3 is a genuine trap whenever "the right one" is defined by proximity to something
+other than the player. The concrete failure: a script targeting the wealthy citizen next to
+a specific NPC used a `DotFilters` box wide enough to reach that NPC, and consistently
+grabbed a different citizen that happened to be standing beside the player instead — the box
+contained both, and the player-centric sort preferred the wrong one.
+
+There are only two real fixes, and widening or narrowing the box is not reliably either of
+them:
+
+- Keep the `DotFilters` bounds tight enough that only the intended NPC qualifies. Only
+  works if the anchor is stationary.
+- Re-rank the results yourself. Locate the anchor separately (a second `TRSNPCV2`), then
+  choose the candidate whose `TPointArray.Mean()` is nearest the anchor's, in screen space.
+  Use `MainScreen.NormalizeDistance()` (`mainscreen.simba:334`) to express the cutoff in
+  fixed-client/default-zoom pixels so it survives zoom changes.
+
+---
+
+## 4c. Identifying ONE specific NPC among several identical ones
+
+The library gives you no way to distinguish two NPCs that share a name, model and
+uptext. `Find` returns them all, sorted by distance to the player (section 4b). If the one
+you want is defined by game state rather than by position — "the one that is currently
+distracted", "the one that is aggro'd", "the one holding the item" — every position- or
+colour-based approach is a proxy for that state and will eventually pick the wrong one.
+
+This was worked through in practice on a Varlamore thieving script, where only one of
+several visually identical NPCs is a valid target at any moment. Three approaches were
+tried and the first two failed in ways worth recording:
+
+**Attempt 1 — nearest candidate, confirmed by XP.** Click the closest, and if no XP
+arrives assume it was wrong and try the next. This does not work whenever the wrong target
+*also* produces the same success signal: here, pickpocketing an undistracted NPC yields
+thieving XP exactly like the distracted one, so a wrong target latched and kept going.
+**Check that your confirmation signal can actually distinguish success from wrong-target
+success** — a signal both cases produce confirms nothing.
+
+**Attempt 2 — locate a nearby anchor NPC, take the candidate closest to it.** The anchor
+was found by ACA colours. Its shirt colours also matched unrelated NPCs, so the script
+picked a candidate next to an impostor anchor and walked across the area to interact with
+it. **An unverified anchor is worse than no anchor**: it produces confident, wrong answers.
+If an anchor is used at all, its identity must be verified (uptext) before anything is
+derived from it.
+
+**Attempt 3 — read an external overlay that already knows the answer.** RuneLite plugins
+can draw tile markers under specific NPCs. Reading that marker turns identification into
+verification: the marker *means* "this is the one", instead of being a proxy for it.
+
+```pascal
+const
+  GREEN_TILE: TCTS2Color = [1754937, 7, 0.50, 3.84];   // ACA of the marker
+  TILE_MIN_SIZE   = 18;    // both dimensions, fixed-zoom px
+  TILE_MIN_PIXELS = 100;
+
+// find marker -> hover the tile centre -> confirm uptext -> click
+```
+
+Practical notes from getting this working:
+
+- **Filter marker clusters on BOTH dimensions and pixel count.** The measured live tile was
+  `w=38 h=37 px=260`. The same colour also matched permanent 2x2 noise (`px=3`) and a
+  player's name overhead at `w=67 h=11 px=214` — a pixel-count-only filter accepts that
+  name at 214px. Requiring both dimensions rejects flat text while keeping the square tile.
+- **Hover the tile centre, no vertical offset.** The model is drawn standing on the tile.
+  Rising ~40px drifted onto a different NPC entirely.
+- **Still verify uptext before clicking.** The marker says which NPC; the uptext says what
+  the click will do. Both are needed.
+- **Watch the zoom.** Marker size scales with zoom, so a fixed pixel floor can silently
+  reject a real marker when antiban zooms out — see `antiban.md` section 8.
+- **This adds an external dependency the script cannot verify.** If the plugin is disabled
+  or recoloured, detection finds nothing and the script idles. That fails closed, which is
+  the right direction, but it will not explain itself — log the marker count so the failure
+  is visible.
+
+The general lesson generalises past tile markers: when the target is defined by game state,
+prefer any signal the game or client renders *because of that state* over reconstructing it
+from geometry.
+
+---
+
 ## 5. Movement functions: `WalkBlind`, `WalkClick`, `WalkHover`, `Click`
 
 These exist at two levels: directly on `Map.Walker` (a `TRSWalkerV2`) for "go to a coordinate," and
