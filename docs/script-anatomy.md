@@ -142,6 +142,55 @@ In `aeroguardians`, the states are e.g. `ENTER_GAME, WAITING, NEW_GAME, GATHER_F
 
 ---
 
+### Adding a second way into a state re-opens every guard the first one closed
+
+A state's entry condition is often carefully guarded — edge detection so it fires once
+rather than continuously, a cooldown so it cannot immediately re-fire, a flag that has to
+be re-armed. When a second, independent trigger for the *same* state is added later, those
+guards have to be repeated on it, or they have effectively been deleted.
+
+Real example from a thieving script. The primary trigger read a chat message and was
+guarded properly — it fired only on the transition of the message onto the newest chat
+line, and only when a cooldown had elapsed, because the message stays visible for minutes
+after the event it announces:
+
+```pascal
+if Self.DistractionStarted() then          // Armed edge + WindowCooldown inside
+  Exit(EWealthyState.PICKPOCKET);
+```
+
+A second trigger was then added directly beneath it, reading an on-screen marker, to catch
+events where the chat edge was missed:
+
+```pascal
+if Self.FindGreenTiles(tiles) then         // no edge, no cooldown
+  Exit(EWealthyState.PICKPOCKET);
+```
+
+The marker sometimes outlives the event, exactly like the chat message did. With no
+cooldown, the state was re-entered the instant the previous attempt gave up: enter, fail
+for the full timeout, exit, see the marker, re-enter. That ran for five minutes, performed
+the guarded action against a target that was no longer valid, produced nothing, and finally
+tripped WaspLib's `WL.Activity` timeout into ending the script.
+
+The fix was one condition:
+
+```pascal
+if Self.WindowCooldown.IsFinished() and Self.FindGreenTiles(tiles) then
+  Exit(EWealthyState.PICKPOCKET);
+```
+
+Worth noting the shutdown was correct behaviour — `WL.Activity` exists to stop a bot that
+has stopped accomplishing anything, and it did. Treat an unexplained activity timeout as a
+signal that some state is spinning without progress, not as something to raise the limit on.
+
+**When adding an alternative entry to an existing state, list the guards on the original
+and confirm each one still applies.** This is the same class of mistake as the early-`Exit`
+ordering problem above: correctness lives in the sequence and conditions around the code,
+not in the code the state runs.
+
+---
+
 ## 5. Finding things in the game world
 
 ### Old style: `TMSObject` + local coordinates + `RSW` walker

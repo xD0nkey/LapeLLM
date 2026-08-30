@@ -655,6 +655,61 @@ part of the script (a bank on an upper floor, a dungeon, an upstairs room) invol
 
 ---
 
+### Sanity-check `Map.Position()` against plausible movement speed
+
+`Map.Position()` matches the minimap against the loaded chunk image, so it can lock onto
+the wrong match in visually repetitive terrain — a plaza built as a symmetric cross of
+near-identical quadrants, a row of identical buildings, a large uniform field. It is right
+the overwhelming majority of the time, which is what makes the occasional wrong answer
+dangerous: anything acting on it treats it as fact.
+
+Caught in a run log:
+
+```
+[00:29:58] target pos=Point(2628,37998)                       <- the expected spot
+[00:30:23] OFF LEASH pos=Point(2312,37642) drift=476
+```
+
+476 map units is 119 tiles, 25 seconds apart. Running is ~2 tiles/sec, so ~50 tiles is the
+hard ceiling — the reading was false. The damage came from what happened next: a
+"walk back to base" rule believed it and called `WebWalk`, which pathfound from a start
+point that did not exist and physically dragged the bot far out of the area. The recovery
+readings afterwards implied 0.8 and 1.7 tiles/sec, i.e. real movement, confirming the
+system was working normally before and after the single bad read.
+
+A character cannot exceed running speed, so a reading implying more than that is a misread
+and must not be acted on:
+
+```pascal
+function SafePosition(): TPoint;
+begin
+  raw := Map.Position();
+  ...
+  moved   := raw.DistanceTo(LastGoodPos);
+  allowed := (elapsed / 1000) * MAX_UNITS_PER_SECOND;   // 12 = 3 tiles/sec, generous
+
+  if (moved > allowed) and (RejectedReads < MAX_REJECTED_READS) then
+    Exit(LastGoodPos);          // keep the last believed position
+  ...
+end;
+```
+
+Two details that matter:
+
+- **Re-anchor after N consecutive rejections.** Otherwise a genuine relocation (a teleport,
+  a death, being moved by a random event) leaves the script permanently disbelieving its
+  own position.
+- **Log the rejections.** Frequent rejections mean the chunk setup is the real problem, not
+  the reading — `map-debugging.md` section 4 covers padding the chunk box so the matcher
+  has more surrounding context to disambiguate against, which is the actual cure for a
+  repetitive area.
+
+The general rule: **any position-derived decision that can move the character should be
+guarded by a plausibility check first.** Walking is the dangerous one, because a bad
+position turns into real, compounding displacement rather than a single wrong action.
+
+---
+
 ## 8. Common pitfalls
 
 1. **Mixing world coordinates with local/image coordinates.** If part of the script uses
